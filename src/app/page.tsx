@@ -7,37 +7,39 @@ import {
   ArrowRight,
   ExternalLink,
   TrendingUp,
-  Users,
   Map,
+  Flame,
 } from 'lucide-react';
 
 const features = [
   {
     title: 'Probability Predictions',
+    kicker: 'Who Wins?',
     description:
-      'Our model analyzes historical data, campaign finances, and demographics to estimate passage probability.',
+      'Our model crunches historical data, campaign cash, and voter demographics to give you a real shot at knowing what passes — before Election Day.',
     icon: BarChart3,
     href: '/predictions',
-    color: 'bg-blue-700',
+    accent: 'border-t-4 border-red-700',
   },
   {
     title: 'Campaign Finance Analysis',
+    kicker: 'Follow the Money',
     description:
-      'Track real-time campaign contributions and spending from Cal-Access data.',
+      'Track real-time contributions and spending from Cal-Access. See who's backing each proposition — and how much they're spending to win your vote.',
     icon: DollarSign,
     href: '/propositions',
-    color: 'bg-red-700',
+    accent: 'border-t-4 border-gray-900',
   },
   {
     title: 'What-If Scenarios',
+    kicker: 'Rewrite the Story',
     description:
-      'Run simulations with different funding levels, turnout rates, or ballot framing.',
+      'What if the opposition doubled its spending? What if turnout surged? Run your own simulations and see how the numbers shift.',
     icon: Zap,
     href: '/scenarios',
-    color: 'bg-blue-600',
+    accent: 'border-t-4 border-amber-500',
   },
 ];
-
 
 const dataSources = [
   {
@@ -58,189 +60,233 @@ const dataSources = [
 ];
 
 const stats = [
-  { label: 'Data Sources', value: '4', icon: BarChart3 },
-  { label: 'Real-Time Finance', value: 'Yes', icon: TrendingUp },
-  { label: 'Counties', value: '58', icon: Map },
-  { label: 'Years of History', value: '10+', icon: Users },
+  { label: 'Data Sources', value: '4+', icon: BarChart3 },
+  { label: 'Live Finance', value: 'Real-Time', icon: TrendingUp },
+  { label: 'CA Counties', value: '58', icon: Map },
+  { label: 'Years of History', value: '10+', icon: Flame },
 ];
 
 export default function HomePage() {
   return (
-    <div className="animate-fade-in bg-white">
-      <section className="bg-white py-20 border-b-4 border-blue-900">
+    <div className="animate-fade-in" style={{ background: 'rgb(250 250 248)' }}>
+
+      {/* Hero — broadsheet front page */}
+      <section className="bg-white border-b-2 border-gray-900 py-14">
         <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto text-center">
-            <div className="flex justify-center mb-6">
-              <Badge className="bg-blue-900 text-white border-0 px-6 py-2 text-sm font-semibold">
-                Beta Release — 2026 Election Cycle
-              </Badge>
-            </div>
-            <h1 className="font-display text-display-xl md:text-6xl font-bold mb-6 text-gray-900">
-              California Proposition
-              <span className="block text-blue-900 mt-2">
-                Predictor & Analyzer
+          <div className="max-w-4xl mx-auto">
+
+            {/* Dateline */}
+            <div className="flex items-center gap-3 mb-6 border-b border-gray-200 pb-4">
+              <span className="breaking px-2 py-0.5 text-xs font-bold uppercase tracking-widest bg-red-700 text-white">
+                Beta Release
               </span>
-            </h1>
-            <p className="text-xl text-gray-700 mb-10 leading-relaxed max-w-3xl mx-auto">
-              Data-driven analysis for statewide ballot measures using real campaign finance data
-              from Cal-Access and historical voting results from Ballotpedia and the CA Secretary of State.
-            </p>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10 max-w-3xl mx-auto">
-              {stats.map((stat) => (
-                <div key={stat.label} className="bg-gray-50 border-2 border-gray-200 rounded p-4">
-                  <div className="flex items-center justify-center mb-2">
-                    <stat.icon className="h-5 w-5 text-blue-900" />
-                  </div>
-                  <div className="text-2xl font-bold text-gray-900 font-display">{stat.value}</div>
-                  <div className="text-xs text-gray-600 mt-1">{stat.label}</div>
-                </div>
-              ))}
+              <span className="text-xs text-gray-400 uppercase tracking-widest font-serif">
+                2026 California Election Cycle
+              </span>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/propositions">
-                <Button size="lg" className="bg-blue-900 text-white hover:bg-blue-800 px-8 py-6 text-lg font-semibold">
-                  View All Propositions
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
-              <Link href="/scenarios">
-                <Button size="lg" className="bg-red-700 text-white hover:bg-red-800 px-8 py-6 text-lg font-semibold">
-                  Run What-If Analysis
-                  <Zap className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
+            <div className="grid md:grid-cols-5 gap-8 items-start">
+              {/* Main headline */}
+              <div className="md:col-span-3 border-r border-gray-200 pr-8">
+                <p className="kicker mb-3">Ballot Measure Intelligence</p>
+                <h1
+                  className="text-5xl md:text-6xl font-black text-gray-900 leading-tight mb-5"
+                  style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+                >
+                  What Will{' '}
+                  <span className="italic text-red-700">California</span>{' '}
+                  Voters Decide?
+                </h1>
+                <p className="text-lg text-gray-700 leading-relaxed mb-6 font-serif">
+                  Data-driven predictions for every statewide ballot measure — powered by real
+                  campaign finance records, a decade of historical results, and a prediction
+                  engine that refuses to guess.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Link href="/propositions">
+                    <Button size="lg" className="bg-gray-900 text-white hover:bg-gray-800 px-7 py-5 text-base font-semibold rounded-none">
+                      View All Propositions
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </Link>
+                  <Link href="/scenarios">
+                    <Button size="lg" className="bg-red-700 text-white hover:bg-red-800 px-7 py-5 text-base font-semibold rounded-none">
+                      Run What-If Analysis
+                      <Zap className="ml-2 h-4 w-4" />
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+
+              {/* Stats sidebar */}
+              <div className="md:col-span-2 space-y-0">
+                <p className="kicker mb-3">By the Numbers</p>
+                {stats.map((stat, i) => (
+                  <div
+                    key={stat.label}
+                    className={`flex items-center justify-between py-3 ${i < stats.length - 1 ? 'border-b border-gray-200' : ''}`}
+                  >
+                    <div className="flex items-center gap-2 text-gray-600 text-sm font-serif uppercase tracking-wide">
+                      <stat.icon className="h-3.5 w-3.5 text-gray-400" />
+                      {stat.label}
+                    </div>
+                    <span
+                      className="text-2xl font-black text-gray-900"
+                      style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+                    >
+                      {stat.value}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="py-20 bg-gray-50">
+      {/* Feature cards — editorial section fronts */}
+      <section className="py-16" style={{ background: 'rgb(250 250 248)' }}>
         <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <Badge className="mb-4 bg-white text-blue-900 border-2 border-blue-900">
-              Platform Features
-            </Badge>
-            <h2 className="font-display text-display-lg font-bold text-gray-900 mb-4">
-              Comprehensive Analysis Tools
+          <div className="max-w-4xl mx-auto mb-10 flex items-center gap-4">
+            <h2
+              className="text-2xl font-black text-gray-900"
+              style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+            >
+              Inside This Edition
             </h2>
-            <p className="text-gray-700 text-lg max-w-2xl mx-auto">
-              Our platform combines multiple authoritative data sources to provide accurate
-              predictions and deep insights into California ballot propositions.
-            </p>
+            <div className="flex-1 border-t-2 border-gray-900" />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {features.map((feature) => (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-0 border border-gray-200 bg-white">
+            {features.map((feature, i) => (
               <Link key={feature.title} href={feature.href}>
-                <Card className="h-full hover:shadow-xl transition-shadow cursor-pointer bg-white border-2 border-gray-200">
-                  <CardHeader>
-                    <div className={`w-14 h-14 rounded ${feature.color} flex items-center justify-center mb-4`}>
-                      <feature.icon className="h-7 w-7 text-white" />
-                    </div>
-                    <CardTitle className="text-xl text-gray-900 font-display">
-                      {feature.title}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-gray-600 leading-relaxed">{feature.description}</p>
-                  </CardContent>
-                </Card>
+                <div
+                  className={`h-full p-8 hover:bg-gray-50 transition-colors cursor-pointer ${feature.accent} ${i < features.length - 1 ? 'border-r border-gray-200' : ''}`}
+                >
+                  <p className="kicker mb-2">{feature.kicker}</p>
+                  <h3
+                    className="text-xl font-bold text-gray-900 mb-3 leading-tight"
+                    style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+                  >
+                    {feature.title}
+                  </h3>
+                  <p className="text-sm text-gray-600 leading-relaxed font-serif">
+                    {feature.description}
+                  </p>
+                  <div className="mt-5 flex items-center gap-1 text-xs font-semibold text-gray-900 uppercase tracking-widest font-serif">
+                    Read More <ArrowRight className="h-3 w-3" />
+                  </div>
+                </div>
               </Link>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="py-20 bg-white">
+      {/* 2026 tracking CTA */}
+      <section className="py-14 bg-white border-t border-b border-gray-200">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <Badge className="mb-3 bg-red-700 text-white border-0">
-              Live Tracking
-            </Badge>
-            <h2 className="font-display text-display-md font-bold text-gray-900">
-              2026 Ballot Measures
-            </h2>
-            <p className="text-gray-600 mt-2 max-w-2xl mx-auto">
-              Predictions for upcoming California propositions based on real campaign finance
-              data from Cal-Access and historical election results from Ballotpedia.
-            </p>
-          </div>
-
-          <div className="text-center">
-            <Link href="/predictions">
-              <Button size="lg" className="bg-blue-900 text-white hover:bg-blue-800 px-8 py-6 text-lg font-semibold">
-                View Predictions Dashboard
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
-            <Link href="/propositions" className="ml-4">
-              <Button size="lg" variant="outline" className="border-2 border-blue-900 text-blue-900 hover:bg-blue-900 hover:text-white px-8 py-6 text-lg font-semibold">
-                Browse All Propositions
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
+          <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8">
+            <div>
+              <p className="kicker mb-2">Live Tracking</p>
+              <h2
+                className="text-3xl font-black text-gray-900 leading-tight"
+                style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+              >
+                2026 Ballot Measures
+                <span className="italic text-red-700"> — updated as data arrives</span>
+              </h2>
+              <p className="text-gray-600 mt-3 max-w-xl font-serif text-sm leading-relaxed">
+                Predictions for upcoming California propositions based on live campaign finance
+                records from Cal-Access and historical election results from Ballotpedia.
+                No guesswork. No fabricated numbers.
+              </p>
+            </div>
+            <div className="flex flex-col gap-3 shrink-0">
+              <Link href="/predictions">
+                <Button size="lg" className="w-full bg-gray-900 text-white hover:bg-gray-800 px-8 py-5 text-sm font-semibold rounded-none uppercase tracking-wider">
+                  Predictions Dashboard
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+              <Link href="/propositions">
+                <Button size="lg" variant="outline" className="w-full border-2 border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white px-8 py-5 text-sm font-semibold rounded-none uppercase tracking-wider">
+                  Browse All Propositions
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </section>
 
-      <section className="py-20 bg-gray-50">
+      {/* Data sources */}
+      <section className="py-14" style={{ background: 'rgb(250 250 248)' }}>
         <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <Badge className="mb-4 bg-white text-gray-700 border-2 border-gray-300">
-              Data Sources
-            </Badge>
-            <h2 className="font-display text-display-md font-bold text-gray-900 mb-4">
-              Powered by Official Government Data
+          <div className="max-w-4xl mx-auto mb-8 flex items-center gap-4">
+            <h2
+              className="text-2xl font-black text-gray-900 shrink-0"
+              style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+            >
+              Our Sources
             </h2>
-            <p className="text-gray-600 max-w-2xl mx-auto">
-              Our predictions are built on publicly available, authoritative data sources
-              from California state agencies and federal databases
-            </p>
+            <div className="flex-1 border-t-2 border-gray-900" />
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {dataSources.map((source) => (
+          <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-0 border border-gray-200 bg-white">
+            {dataSources.map((source, i) => (
               <a
                 key={source.name}
                 href={source.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-6 bg-white rounded border-2 border-gray-200 hover:border-blue-900 hover:shadow-lg transition-all text-center"
+                className={`p-6 hover:bg-gray-50 transition-colors ${i < dataSources.length - 1 ? 'border-r border-gray-200' : ''}`}
               >
-                <div className="w-12 h-12 bg-blue-900 rounded flex items-center justify-center mx-auto mb-4">
-                  <ExternalLink className="h-6 w-6 text-white" />
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3
+                      className="font-bold text-gray-900 mb-1"
+                      style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+                    >
+                      {source.name}
+                    </h3>
+                    <p className="text-sm text-gray-500 font-serif">{source.description}</p>
+                  </div>
+                  <ExternalLink className="h-4 w-4 text-gray-400 shrink-0 mt-0.5" />
                 </div>
-                <h3 className="font-display font-bold text-gray-900 mb-2">
-                  {source.name}
-                </h3>
-                <p className="text-sm text-gray-600">{source.description}</p>
               </a>
             ))}
           </div>
+          <p className="max-w-4xl mx-auto mt-4 text-xs text-gray-400 font-serif">
+            All predictions are built on publicly available, authoritative government and nonprofit data. We don't fabricate numbers — if real data isn't available, we say so.
+          </p>
         </div>
       </section>
 
-      <section className="py-20 bg-blue-900 border-t-4 border-red-700">
+      {/* Footer CTA — editorial column closer */}
+      <section className="py-16 bg-gray-900 border-t-4 border-red-700">
         <div className="container mx-auto px-4 text-center">
-          <h2 className="font-display text-display-lg font-bold text-white mb-4">
-            Ready to Explore Proposition Predictions?
+          <p className="kicker text-gray-400 mb-3">Ready to Dig In?</p>
+          <h2
+            className="text-4xl font-black text-white mb-4 leading-tight"
+            style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+          >
+            Democracy Works Better When{' '}
+            <span className="italic text-red-400">Voters Are Informed.</span>
           </h2>
-          <p className="text-blue-100 mb-10 max-w-2xl mx-auto text-lg">
+          <p className="text-gray-400 mb-10 max-w-xl mx-auto font-serif text-sm leading-relaxed">
             Dive into detailed analysis, run what-if scenarios, and understand how
-            ballot measures might affect California's legislative landscape.
+            ballot measures might reshape California's legislative landscape.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/propositions">
-              <Button size="lg" className="bg-white text-blue-900 hover:bg-gray-100 px-8 py-6 text-lg font-semibold">
+              <Button size="lg" className="bg-white text-gray-900 hover:bg-gray-100 px-8 py-5 text-sm font-semibold rounded-none uppercase tracking-wider">
                 Get Started
-                <ArrowRight className="ml-2 h-5 w-5" />
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
-            <Link href="/about">
-              <Button size="lg" className="bg-red-700 text-white hover:bg-red-800 px-8 py-6 text-lg font-semibold">
-                Learn About Our Methodology
+            <Link href="/predictions">
+              <Button size="lg" className="bg-red-700 text-white hover:bg-red-800 px-8 py-5 text-sm font-semibold rounded-none uppercase tracking-wider">
+                View Predictions
               </Button>
             </Link>
           </div>
