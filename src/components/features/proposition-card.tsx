@@ -17,50 +17,80 @@ export function PropositionCard({
   prediction,
   showPrediction = true,
 }: PropositionCardProps) {
-  const statusStyles = {
-    upcoming: 'bg-blue-900 text-white',
-    active: 'bg-blue-600 text-white',
-    passed: 'bg-green-700 text-white',
-    failed: 'bg-red-700 text-white',
+  const statusLabel = {
+    upcoming: 'Upcoming',
+    active: 'Live',
+    passed: 'Passed',
+    failed: 'Failed',
+  };
+
+  const statusStyle = {
+    upcoming: 'bg-gray-900 text-white',
+    active: 'bg-red-700 text-white',
+    passed: 'bg-emerald-700 text-white',
+    failed: 'bg-gray-500 text-white',
+  } as const;
+
+  const topAccent = {
+    upcoming: 'bg-gray-900',
+    active: 'bg-red-700',
+    passed: 'bg-emerald-700',
+    failed: 'bg-gray-400',
   } as const;
 
   return (
     <Link href={`/propositions/${proposition.id}`}>
-      <Card className="h-full hover:shadow-xl transition-shadow cursor-pointer bg-white border-2 border-gray-200">
-        <div className={`h-2 ${proposition.status === 'passed' ? 'bg-green-700' : proposition.status === 'failed' ? 'bg-red-700' : 'bg-blue-900'}`} />
+      <div className="h-full bg-white border border-gray-200 hover:shadow-lg transition-shadow cursor-pointer group">
+        {/* Top color rule */}
+        <div className={`h-1 ${topAccent[proposition.status]}`} />
 
-        <CardContent className="pt-6">
-          <div className="flex items-start justify-between gap-4 mb-4">
+        <div className="p-6">
+          {/* Kicker row */}
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            <span className={`text-xs font-bold uppercase tracking-widest px-2 py-0.5 ${statusStyle[proposition.status]}`}
+              style={{ fontFamily: "'Source Serif 4', Georgia, serif" }}>
+              {statusLabel[proposition.status]}
+            </span>
+            <span className="text-xs uppercase tracking-widest text-gray-400 font-serif">
+              {proposition.category.replace(/_/g, ' ')}
+            </span>
+          </div>
+
+          {/* Headline */}
+          <div className="flex items-start justify-between gap-3 mb-3">
             <div className="flex-1 min-w-0">
-              <div className="flex flex-wrap items-center gap-2 mb-3">
-                <Badge className={`${statusStyles[proposition.status]} border-0 text-xs font-semibold`}>
-                  {proposition.status}
-                </Badge>
-                <Badge className="bg-gray-100 text-gray-700 border border-gray-300 text-xs font-semibold">
-                  {proposition.category.replace(/_/g, ' ')}
-                </Badge>
-              </div>
-              <h3 className="font-display font-bold text-lg text-gray-900">
+              <h3
+                className="font-bold text-xl text-gray-900 leading-tight group-hover:text-red-700 transition-colors"
+                style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+              >
                 Proposition {proposition.number}
               </h3>
-              <p className="text-gray-600 mt-1 text-sm line-clamp-2">{proposition.title}</p>
+              <p className="text-gray-700 mt-1 text-sm font-serif line-clamp-2 leading-relaxed">
+                {proposition.title}
+              </p>
               {proposition.summary && proposition.summary !== proposition.title && proposition.status !== 'upcoming' && (
-                <p className="text-gray-500 mt-1 text-xs line-clamp-2">{proposition.summary}</p>
+                <p className="text-gray-500 mt-1 text-xs font-serif line-clamp-2 italic">
+                  {proposition.summary}
+                </p>
               )}
             </div>
-            <span className="text-4xl font-display font-bold text-gray-200 shrink-0">
+            <span
+              className="text-5xl font-black text-gray-100 shrink-0 leading-none"
+              style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+            >
               {proposition.number}
             </span>
           </div>
 
-          <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
+          {/* Dateline */}
+          <div className="flex items-center gap-4 text-xs text-gray-400 mb-4 border-t border-gray-100 pt-3 font-serif uppercase tracking-wide">
             <div className="flex items-center gap-1">
-              <Calendar className="h-4 w-4 text-blue-900" />
+              <Calendar className="h-3 w-3" />
               <span>{formatDate(proposition.electionDate, { month: 'short', year: 'numeric' })}</span>
             </div>
             {proposition.sponsors && proposition.sponsors.length > 0 && (
               <div className="flex items-center gap-1">
-                <Users className="h-4 w-4 text-blue-900" />
+                <Users className="h-3 w-3" />
                 <span>{proposition.sponsors.length} sponsors</span>
               </div>
             )}
@@ -69,63 +99,73 @@ export function PropositionCard({
               target="_blank"
               rel="noopener noreferrer"
               onClick={e => e.stopPropagation()}
-              className="flex items-center gap-1 text-blue-700 hover:text-blue-900 ml-auto"
+              className="flex items-center gap-1 text-gray-400 hover:text-red-700 ml-auto transition-colors"
             >
               <ExternalLink className="h-3 w-3" />
-              <span className="text-xs">Ballotpedia</span>
+              <span>Ballotpedia</span>
             </a>
           </div>
 
+          {/* Prediction meter */}
           {showPrediction && prediction && (
-            <div className="p-4 bg-gray-50 rounded border border-gray-200">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-medium text-gray-700">
+            <div className="p-4 bg-gray-50 border border-gray-200">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs uppercase tracking-widest text-gray-500 font-serif">
                   Passage Probability
                 </span>
-                <span className={`text-2xl font-display font-bold ${prediction.passageProbability >= 0.5 ? 'text-blue-900' : 'text-red-700'}`}>
+                <span
+                  className={`text-2xl font-black ${prediction.passageProbability >= 0.5 ? 'text-emerald-700' : 'text-red-700'}`}
+                  style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+                >
                   {formatPercentage(prediction.passageProbability)}
                 </span>
               </div>
-              <div className="h-3 bg-gray-200 rounded overflow-hidden">
+              <div className="h-2 bg-gray-200 overflow-hidden">
                 <div
-                  className={`h-full ${prediction.passageProbability >= 0.5 ? 'bg-blue-900' : 'bg-red-700'}`}
+                  className={`h-full transition-all ${prediction.passageProbability >= 0.5 ? 'bg-emerald-600' : 'bg-red-600'}`}
                   style={{ width: `${prediction.passageProbability * 100}%` }}
                 />
               </div>
-              <div className="flex justify-between mt-2 text-xs text-gray-500 font-medium">
+              <div className="flex justify-between mt-1.5 text-xs text-gray-400 font-serif uppercase tracking-wide">
                 <span>Fail</span>
-                <span className="text-gray-400 capitalize">{prediction.dataQuality} data</span>
+                <span className="text-gray-300 capitalize">{prediction.dataQuality} data</span>
                 <span>Pass</span>
               </div>
             </div>
           )}
 
+          {/* Actual result */}
           {proposition.result && (
-            <div className="p-4 bg-gray-50 rounded border border-gray-200">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-700">Final Result</span>
-                <Badge className={`${proposition.result.passed ? 'bg-green-700' : 'bg-red-700'} text-white border-0`}>
+            <div className="p-4 bg-gray-50 border border-gray-200">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs uppercase tracking-widest text-gray-500 font-serif">
+                  Final Result
+                </span>
+                <span
+                  className={`text-xs font-bold uppercase tracking-widest px-2 py-0.5 ${proposition.result.passed ? 'bg-emerald-700 text-white' : 'bg-gray-500 text-white'}`}
+                  style={{ fontFamily: "'Source Serif 4', Georgia, serif" }}
+                >
                   {proposition.result.passed ? 'Passed' : 'Failed'}
-                </Badge>
+                </span>
               </div>
               {proposition.result.yesPercentage > 0 && (
                 <>
-                  <div className="h-3 bg-red-200 rounded overflow-hidden mt-3">
+                  <div className="h-2 bg-red-100 overflow-hidden mt-2">
                     <div
-                      className="h-full bg-green-600"
+                      className="h-full bg-emerald-600"
                       style={{ width: `${proposition.result.yesPercentage}%` }}
                     />
                   </div>
-                  <div className="flex justify-between mt-2 text-xs font-medium">
-                    <span className="text-green-700">Yes {proposition.result.yesPercentage.toFixed(1)}%</span>
+                  <div className="flex justify-between mt-1.5 text-xs font-serif font-semibold">
+                    <span className="text-emerald-700">Yes {proposition.result.yesPercentage.toFixed(1)}%</span>
                     <span className="text-red-700">No {proposition.result.noPercentage.toFixed(1)}%</span>
                   </div>
                 </>
               )}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </Link>
   );
 }
