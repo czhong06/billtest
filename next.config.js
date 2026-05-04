@@ -2,13 +2,14 @@
 const nextConfig = {
   reactStrictMode: true,
   eslint: {
-	ignoreDuringBuilds: true,
+    ignoreDuringBuilds: true,
   },
   typescript: {
-	ignoreBuildErrors: true,
+    ignoreBuildErrors: true,
   },
-  compiler: {
-	styledComponents: true,
+  experimental: {
+    workerThreads: false,
+    cpus: 1,
   },
   images: {
     remotePatterns: [
