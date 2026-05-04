@@ -3,7 +3,6 @@ import { Card, CardHeader, CardTitle, CardContent, Button, Badge } from '@/compo
 import {
   BarChart3,
   DollarSign,
-  Zap,
   ArrowRight,
   ExternalLink,
   TrendingUp,
@@ -29,15 +28,6 @@ const features = [
     icon: DollarSign,
     href: '/propositions',
     accent: 'border-t-4 border-gray-900',
-  },
-  {
-    title: 'What-If Scenarios',
-    kicker: 'Rewrite the Story',
-    description:
-      'What if the opposition doubled its spending? What if turnout surged? Run your own simulations and see how the numbers shift.',
-    icon: Zap,
-    href: '/scenarios',
-    accent: 'border-t-4 border-amber-500',
   },
 ];
 
@@ -107,12 +97,6 @@ export default function HomePage() {
                     <Button size="lg" className="bg-gray-900 text-white hover:bg-gray-800 px-7 py-5 text-base font-semibold rounded-none">
                       View All Propositions
                       <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  </Link>
-                  <Link href="/scenarios">
-                    <Button size="lg" className="bg-red-700 text-white hover:bg-red-800 px-7 py-5 text-base font-semibold rounded-none">
-                      Run What-If Analysis
-                      <Zap className="ml-2 h-4 w-4" />
                     </Button>
                   </Link>
                 </div>
