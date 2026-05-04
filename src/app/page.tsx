@@ -25,7 +25,7 @@ const features = [
     title: 'Campaign Finance Analysis',
     kicker: 'Follow the Money',
     description:
-      'Track real-time contributions and spending from Cal-Access. See who's backing each proposition — and how much they're spending to win your vote.',
+      `Track real-time contributions and spending from Cal-Access. See who's backing each proposition — and how much they're spending to win your vote.`,
     icon: DollarSign,
     href: '/propositions',
     accent: 'border-t-4 border-gray-900',
