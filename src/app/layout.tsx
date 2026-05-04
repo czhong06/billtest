@@ -1,20 +1,22 @@
 import type { Metadata } from 'next';
-import { DM_Sans, Space_Grotesk } from 'next/font/google';
+import { Playfair_Display, Source_Serif_4 } from 'next/font/google';
 import { Header, Footer } from '@/components/layout';
 import './globals.css';
 
-const dmSans = DM_Sans({
+const sourceSans = Source_Serif_4({
   subsets: ['latin'],
   variable: '--font-body',
   display: 'swap',
-  weight: ['400', '500', '600', '700'],
+  weight: ['400', '600'],
+  style: ['normal', 'italic'],
 });
 
-const spaceGrotesk = Space_Grotesk({
+const playfair = Playfair_Display({
   subsets: ['latin'],
   variable: '--font-display',
   display: 'swap',
-  weight: ['400', '500', '600', '700'],
+  weight: ['400', '700', '900'],
+  style: ['normal', 'italic'],
 });
 
 export const metadata: Metadata = {
@@ -52,9 +54,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${dmSans.variable} ${spaceGrotesk.variable}`}>
-      <body className="min-h-screen flex flex-col bg-white text-gray-900 antialiased font-body">
-        <div className="h-1 bg-blue-900" />
+    <html lang="en" className={`${sourceSans.variable} ${playfair.variable}`}>
+      <body className="min-h-screen flex flex-col bg-[#FAFAF8] text-gray-900 antialiased font-body">
+        <div className="h-1 bg-gray-900" />
         <div className="h-0.5 bg-red-700" />
 
         <Header />
