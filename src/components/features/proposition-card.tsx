@@ -25,15 +25,15 @@ export function PropositionCard({
   };
 
   const statusStyle = {
-    upcoming: 'bg-gray-900 text-white',
-    active: 'bg-red-700 text-white',
+    upcoming: 'bg-slate-700 text-white',
+    active: 'bg-indigo-600 text-white',
     passed: 'bg-emerald-700 text-white',
     failed: 'bg-gray-500 text-white',
   } as const;
 
   const topAccent = {
-    upcoming: 'bg-gray-900',
-    active: 'bg-red-700',
+    upcoming: 'bg-slate-700',
+    active: 'bg-indigo-600',
     passed: 'bg-emerald-700',
     failed: 'bg-gray-400',
   } as const;
@@ -60,7 +60,7 @@ export function PropositionCard({
           <div className="flex items-start justify-between gap-3 mb-3">
             <div className="flex-1 min-w-0">
               <h3
-                className="font-bold text-xl text-gray-900 leading-tight group-hover:text-red-700 transition-colors"
+                className="font-bold text-xl text-slate-900 leading-tight group-hover:text-indigo-600 transition-colors"
                 style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
               >
                 Proposition {proposition.number}
@@ -99,7 +99,7 @@ export function PropositionCard({
               target="_blank"
               rel="noopener noreferrer"
               onClick={e => e.stopPropagation()}
-              className="flex items-center gap-1 text-gray-400 hover:text-red-700 ml-auto transition-colors"
+              className="flex items-center gap-1 text-gray-400 hover:text-indigo-600 ml-auto transition-colors"
             >
               <ExternalLink className="h-3 w-3" />
               <span>Ballotpedia</span>
@@ -114,7 +114,7 @@ export function PropositionCard({
                   Passage Probability
                 </span>
                 <span
-                  className={`text-2xl font-black ${prediction.passageProbability >= 0.5 ? 'text-emerald-700' : 'text-red-700'}`}
+                  className={`text-2xl font-black ${prediction.passageProbability >= 0.5 ? 'text-emerald-700' : 'text-indigo-600'}`}
                   style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
                 >
                   {formatPercentage(prediction.passageProbability)}
@@ -158,7 +158,7 @@ export function PropositionCard({
                   </div>
                   <div className="flex justify-between mt-1.5 text-xs font-serif font-semibold">
                     <span className="text-emerald-700">Yes {proposition.result.yesPercentage.toFixed(1)}%</span>
-                    <span className="text-red-700">No {proposition.result.noPercentage.toFixed(1)}%</span>
+                    <span className="text-indigo-600">No {proposition.result.noPercentage.toFixed(1)}%</span>
                   </div>
                 </>
               )}
