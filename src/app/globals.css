@@ -6,8 +6,8 @@
   :root {
     --background: 250 250 248;
     --foreground: 17 17 17;
-    --primary: 17 17 17;
-    --accent: 187 0 0;
+    --primary: 51 65 85;       /* slate-700 — calm, authoritative */
+    --accent: 79 70 229;       /* indigo-600 — progressive, trustworthy */
   }
 
   html {
@@ -35,38 +35,38 @@
   }
 
   .gov-header {
-    @apply bg-white border-b-2 border-gray-900;
+    @apply bg-white border-b-2 border-slate-700;
   }
 
   .political-card {
-    @apply bg-white border border-gray-200 shadow-sm hover:shadow-md transition-shadow;
+    @apply bg-white border border-slate-200 shadow-sm hover:shadow-md transition-shadow;
   }
 
   .kicker {
     font-family: 'Source Serif 4', Georgia, serif;
-    @apply text-xs font-semibold tracking-widest uppercase text-red-700;
+    @apply text-xs font-semibold tracking-widest uppercase text-indigo-600;
   }
 
   .vote-button {
-    @apply bg-gray-900 hover:bg-gray-800 text-white font-semibold px-6 py-3 transition-colors;
+    @apply bg-slate-700 hover:bg-slate-800 text-white font-semibold px-6 py-3 transition-colors;
     font-family: 'Source Serif 4', Georgia, serif;
   }
 
   .vote-button-alt {
-    @apply bg-red-700 hover:bg-red-800 text-white font-semibold px-6 py-3 transition-colors;
+    @apply bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-3 transition-colors;
     font-family: 'Source Serif 4', Georgia, serif;
   }
 
-  .dem-accent { @apply text-blue-800 border-blue-800; }
-  .rep-accent { @apply text-red-700 border-red-700; }
+  .dem-accent { @apply text-indigo-600 border-indigo-600; }
+  .rep-accent { @apply text-rose-600 border-rose-600; }
 
   .breaking {
-    @apply bg-red-700 text-white text-xs font-bold uppercase tracking-widest px-2 py-0.5;
+    @apply bg-indigo-600 text-white text-xs font-bold uppercase tracking-widest px-2 py-0.5;
   }
 
   .dateline {
     font-family: 'Source Serif 4', Georgia, serif;
-    @apply text-xs text-gray-500 uppercase tracking-widest;
+    @apply text-xs text-slate-400 uppercase tracking-widest;
   }
 }
 
@@ -77,13 +77,13 @@
 
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: #f5f5f0; }
-::-webkit-scrollbar-thumb { background: #999; }
-::-webkit-scrollbar-thumb:hover { background: #555; }
+::-webkit-scrollbar-thumb { background: #94a3b8; }
+::-webkit-scrollbar-thumb:hover { background: #64748b; }
 
 html { scroll-behavior: smooth; }
 
 *:focus-visible {
-  @apply outline-none ring-2 ring-gray-900 ring-offset-2;
+  @apply outline-none ring-2 ring-indigo-500 ring-offset-2;
 }
 
 @keyframes fadeIn {
@@ -103,11 +103,11 @@ html { scroll-behavior: smooth; }
 .animate-slide-up { animation: slideUp 0.3s ease-out; }
 .animate-slide-left { animation: slideInLeft 0.4s ease-out; }
 
-.chart-democrat { @apply bg-blue-800; }
-.chart-republican { @apply bg-red-700; }
-.chart-independent { @apply bg-gray-500; }
+.chart-democrat { @apply bg-indigo-600; }
+.chart-republican { @apply bg-rose-500; }
+.chart-independent { @apply bg-slate-400; }
 
 .status-passed { @apply bg-emerald-50 text-emerald-900 border border-emerald-700; }
-.status-failed { @apply bg-red-50 text-red-900 border border-red-700; }
+.status-failed { @apply bg-rose-50 text-rose-900 border border-rose-600; }
 .status-pending { @apply bg-amber-50 text-amber-900 border border-amber-600; }
-.status-in-committee { @apply bg-gray-50 text-gray-800 border border-gray-400; }
+.status-in-committee { @apply bg-slate-50 text-slate-800 border border-slate-400; }
