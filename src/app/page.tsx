@@ -18,7 +18,7 @@ const features = [
       'Our model crunches historical data, campaign cash, and voter demographics to give you a real shot at knowing what passes — before Election Day.',
     icon: BarChart3,
     href: '/predictions',
-    accent: 'border-t-4 border-red-700',
+    accent: 'border-t-4 border-indigo-500',
   },
   {
     title: 'Campaign Finance Analysis',
@@ -27,7 +27,7 @@ const features = [
       `Track real-time contributions and spending from Cal-Access. See who's backing each proposition — and how much they're spending to win your vote.`,
     icon: DollarSign,
     href: '/propositions',
-    accent: 'border-t-4 border-gray-900',
+    accent: 'border-t-4 border-slate-700',
   },
 ];
 
@@ -67,7 +67,7 @@ export default function HomePage() {
 
             {/* Dateline */}
             <div className="flex items-center gap-3 mb-6 border-b border-gray-200 pb-4">
-              <span className="breaking px-2 py-0.5 text-xs font-bold uppercase tracking-widest bg-red-700 text-white">
+              <span className="breaking px-2 py-0.5 text-xs font-bold uppercase tracking-widest bg-indigo-600 text-white">
                 Beta Release
               </span>
               <span className="text-xs text-gray-400 uppercase tracking-widest font-serif">
@@ -80,11 +80,11 @@ export default function HomePage() {
               <div className="md:col-span-3 border-r border-gray-200 pr-8">
                 <p className="kicker mb-3">Ballot Measure Intelligence</p>
                 <h1
-                  className="text-5xl md:text-6xl font-black text-gray-900 leading-tight mb-5"
+                  className="text-5xl md:text-6xl font-black text-slate-900 leading-tight mb-5"
                   style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
                 >
                   What Will{' '}
-                  <span className="italic text-red-700">California</span>{' '}
+                  <span className="italic text-indigo-600">California</span>{' '}
                   Voters Decide?
                 </h1>
                 <p className="text-lg text-gray-700 leading-relaxed mb-6 font-serif">
@@ -94,7 +94,7 @@ export default function HomePage() {
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3">
                   <Link href="/propositions">
-                    <Button size="lg" className="bg-gray-900 text-white hover:bg-gray-800 px-7 py-5 text-base font-semibold rounded-none">
+                    <Button size="lg" className="bg-slate-700 text-white hover:bg-slate-800 px-7 py-5 text-base font-semibold rounded-none">
                       View All Propositions
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
@@ -138,7 +138,7 @@ export default function HomePage() {
             >
               Inside This Edition
             </h2>
-            <div className="flex-1 border-t-2 border-gray-900" />
+            <div className="flex-1 border-t-2 border-slate-700" />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-0 border border-gray-200 bg-white">
@@ -178,7 +178,7 @@ export default function HomePage() {
                 style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
               >
                 2026 Ballot Measures
-                <span className="italic text-red-700"> — updated as data arrives</span>
+                <span className="italic text-indigo-600"> — updated as data arrives</span>
               </h2>
               <p className="text-gray-600 mt-3 max-w-xl font-serif text-sm leading-relaxed">
                 Predictions for upcoming California propositions based on live campaign finance
@@ -188,13 +188,13 @@ export default function HomePage() {
             </div>
             <div className="flex flex-col gap-3 shrink-0">
               <Link href="/predictions">
-                <Button size="lg" className="w-full bg-gray-900 text-white hover:bg-gray-800 px-8 py-5 text-sm font-semibold rounded-none uppercase tracking-wider">
+                <Button size="lg" className="w-full bg-slate-700 text-white hover:bg-slate-800 px-8 py-5 text-sm font-semibold rounded-none uppercase tracking-wider">
                   Predictions Dashboard
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
               <Link href="/propositions">
-                <Button size="lg" variant="outline" className="w-full border-2 border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white px-8 py-5 text-sm font-semibold rounded-none uppercase tracking-wider">
+                <Button size="lg" variant="outline" className="w-full border-2 border-slate-700 text-slate-700 hover:bg-slate-700 hover:text-white px-8 py-5 text-sm font-semibold rounded-none uppercase tracking-wider">
                   Browse All Propositions
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
@@ -214,7 +214,7 @@ export default function HomePage() {
             >
               Our Sources
             </h2>
-            <div className="flex-1 border-t-2 border-gray-900" />
+            <div className="flex-1 border-t-2 border-slate-700" />
           </div>
           <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-0 border border-gray-200 bg-white">
             {dataSources.map((source, i) => (
@@ -247,7 +247,7 @@ export default function HomePage() {
       </section>
 
       {/* Footer CTA — editorial column closer */}
-      <section className="py-16 bg-gray-900 border-t-4 border-red-700">
+      <section className="py-16 bg-gray-900 border-t-4 border-indigo-500">
         <div className="container mx-auto px-4 text-center">
           <p className="kicker text-gray-400 mb-3">Ready to Dig In?</p>
           <h2
@@ -269,7 +269,7 @@ export default function HomePage() {
               </Button>
             </Link>
             <Link href="/predictions">
-              <Button size="lg" className="bg-red-700 text-white hover:bg-red-800 px-8 py-5 text-sm font-semibold rounded-none uppercase tracking-wider">
+              <Button size="lg" className="bg-indigo-600 text-white hover:bg-indigo-700 px-8 py-5 text-sm font-semibold rounded-none uppercase tracking-wider">
                 View Predictions
               </Button>
             </Link>
