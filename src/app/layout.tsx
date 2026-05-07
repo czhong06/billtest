@@ -31,9 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <div className="h-1 bg-slate-700" />
         <div className="h-0.5 bg-indigo-500" />
         <Header />
-        <main className="flex-1">
-          {children}
-        </main>
+        <main className="flex-1">{children}</main>
         <Footer />
       </body>
     </html>
