@@ -13,10 +13,8 @@ const navigation = [
 
 export function Header() {
   const pathname = usePathname();
-
   return (
     <header className="sticky top-0 z-50 w-full bg-white border-b border-slate-200 shadow-sm">
-      {/* Top strip */}
       <div className="border-b border-slate-100 py-1 px-4">
         <div className="container mx-auto flex items-center justify-between">
           <span className="text-xs text-slate-400 uppercase tracking-widest font-serif">
@@ -34,14 +32,10 @@ export function Header() {
           </div>
         </div>
       </div>
-
-      {/* Masthead */}
       <div className="border-b-2 border-slate-700 py-3 px-4">
         <div className="container mx-auto flex items-center justify-center">
           <Link href="/" className="flex flex-col items-center group">
-            <span className="text-xs tracking-[0.25em] uppercase text-slate-400 font-serif mb-0.5">
-              The California
-            </span>
+            <span className="text-xs tracking-[0.25em] uppercase text-slate-400 font-serif mb-0.5">The California</span>
             <span className="text-3xl font-black text-slate-800 leading-none tracking-tight"
               style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
               Proposition Predictor
@@ -52,22 +46,16 @@ export function Header() {
           </Link>
         </div>
       </div>
-
-      {/* Nav strip */}
       <div className="bg-slate-700">
         <div className="container mx-auto px-4">
           <nav className="flex items-center justify-center gap-0">
             {navigation.map((item) => {
-              const isActive =
-                pathname === item.href ||
-                (item.href !== '/' && pathname.startsWith(item.href));
+              const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
               return (
                 <Link key={item.name} href={item.href}
                   className={cn(
                     'flex items-center gap-1.5 px-5 py-2.5 text-xs font-semibold uppercase tracking-widest transition-colors border-r border-slate-600 last:border-r-0',
-                    isActive
-                      ? 'bg-indigo-600 text-white'
-                      : 'text-slate-300 hover:bg-slate-600 hover:text-white'
+                    isActive ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-600 hover:text-white'
                   )}
                   style={{ fontFamily: "'Source Serif 4', Georgia, serif" }}>
                   <item.icon className="h-3 w-3" />
