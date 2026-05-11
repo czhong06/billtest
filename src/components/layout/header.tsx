@@ -3,12 +3,12 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { BarChart3, FileText, Home, ExternalLink } from 'lucide-react';
+import { Map, FileText, Home, ExternalLink } from 'lucide-react';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: Home },
   { name: 'Propositions', href: '/propositions', icon: FileText },
-  { name: 'Predictions', href: '/predictions', icon: BarChart3 },
+  { name: 'Voting Map', href: '/predictions', icon: Map },
 ];
 
 export function Header() {
