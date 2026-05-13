@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { caSosClient } from '@/lib/external-apis';
-import { HistoricalComparison, Proposition } from '@/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,74 +7,107 @@ interface RouteContext {
   params: { id: string };
 }
 
-/**
- * Find historically similar propositions by category.
- * Uses Ballotpedia-enriched results from past elections.
- */
-export async function GET(
-  _request: NextRequest,
-  context: RouteContext
-) {
+interface ModelSimilarProp {
+  year: number;
+  prop_number: string;
+  description: string;
+  similarity_score: number;
+}
+
+export interface SimilarPropResult {
+  year: number;
+  propNumber: string;
+  description: string;
+  similarityScore: number;
+  yesPercentage?: number;
+  passed?: boolean;
+}
+
+async function enrichWithVoteData(props: SimilarPropResult[]): Promise<SimilarPropResult[]> {
+  return Promise.all(
+    props.map(async (p) => {
+      try {
+        const yearProps = await caSosClient.getPropositionsByYear(p.year);
+        const match = yearProps.find(yp => yp.number === p.propNumber);
+        if (match?.result && match.result.yesVotes > 0) {
+          return { ...p, yesPercentage: match.result.yesPercentage, passed: match.result.passed };
+        }
+      } catch { /* leave unenriched */ }
+      return p;
+    })
+  );
+}
+
+export async function GET(_request: NextRequest, context: RouteContext) {
   try {
     const { id } = context.params;
-    const [yearStr, number] = id.split('-');
-    const targetYear = parseInt(yearStr);
+    const dashIndex = id.indexOf('-');
+    const yearStr = id.slice(0, dashIndex);
+    const propNum = id.slice(dashIndex + 1);
+    const year = parseInt(yearStr);
 
-    if (isNaN(targetYear) || !number) {
+    if (isNaN(year) || !propNum) {
       return NextResponse.json(
         { data: [], success: false, error: { code: 'INVALID_ID', message: 'Invalid proposition ID' } },
         { status: 400 }
       );
     }
 
-    // Get the target proposition to know its category
-    const targetProps = await caSosClient.getPropositionsByYear(targetYear);
-    const target = targetProps.find(p => p.number === number);
-    if (!target) {
-      return NextResponse.json({ data: [], success: true });
-    }
+    // Try model API first
+    try {
+      const modelUrl = `https://adr310-d3-model-web-service.hf.space/find-similar-props/?year=${year}&prop_num=${encodeURIComponent(propNum)}`;
+      const res = await fetch(modelUrl, { signal: AbortSignal.timeout(10000) });
 
-    // Fetch propositions from past election years and find similar ones
-    const currentYear = new Date().getFullYear();
-    const yearsToSearch = [];
-    for (let y = currentYear; y >= currentYear - 10; y--) {
-      if (y !== targetYear && (y % 2 === 0 || y >= currentYear - 1)) {
-        yearsToSearch.push(y);
+      if (res.ok) {
+        const json = await res.json();
+        const props = json.similar_props as ModelSimilarProp[];
+        if (Array.isArray(props) && props.length > 0) {
+          const base: SimilarPropResult[] = props.slice(0, 3).map(p => ({
+            year: p.year,
+            propNumber: p.prop_number,
+            description: p.description,
+            similarityScore: p.similarity_score,
+          }));
+          const data = await enrichWithVoteData(base);
+          return NextResponse.json({ data, success: true, method: 'ml' });
+        }
       }
+    } catch {
+      // Fall through to category-based fallback
     }
 
-    // Fetch in parallel (limit to 4 years to avoid too many requests)
+    // Category-based fallback
+    const targetProps = await caSosClient.getPropositionsByYear(year);
+    const target = targetProps.find(p => p.number === propNum);
+    if (!target) {
+      return NextResponse.json({ data: [], success: true, method: 'category' });
+    }
+
+    const currentYear = new Date().getFullYear();
+    const yearsToSearch: number[] = [];
+    for (let y = currentYear; y >= currentYear - 14; y -= 2) {
+      if (y !== year) yearsToSearch.push(y);
+      if (yearsToSearch.length >= 5) break;
+    }
+
     const yearResults = await Promise.all(
-      yearsToSearch.slice(0, 4).map(y => caSosClient.getPropositionsByYear(y).catch(() => []))
+      yearsToSearch.map(y => caSosClient.getPropositionsByYear(y).catch(() => []))
     );
 
-    const allProps = yearResults.flat();
+    const candidates: SimilarPropResult[] = yearResults
+      .flat()
+      .filter(p => p.category === target.category && p.id !== target.id)
+      .slice(0, 3)
+      .map(p => ({
+        year: p.year,
+        propNumber: p.number,
+        description: p.title,
+        similarityScore: 0,
+        yesPercentage: p.result && p.result.yesVotes > 0 ? p.result.yesPercentage : undefined,
+        passed: p.result && p.result.yesVotes > 0 ? p.result.passed : undefined,
+      }));
 
-    // Score and rank by similarity
-    const comparisons: HistoricalComparison[] = [];
-    for (const prop of allProps) {
-      if (!prop.result) continue; // Only include props with actual results
-
-      const similarity = calculateSimilarity(target, prop);
-      if (similarity < 0.2) continue;
-
-      comparisons.push({
-        propositionId: prop.id,
-        propositionNumber: prop.number,
-        year: prop.year,
-        similarity,
-        result: prop.result.passed ? 'passed' : 'failed',
-        yesPercentage: prop.result.yesPercentage,
-      });
-    }
-
-    // Sort by similarity descending, take top 5
-    comparisons.sort((a, b) => b.similarity - a.similarity);
-
-    return NextResponse.json({
-      data: comparisons.slice(0, 5),
-      success: true,
-    });
+    return NextResponse.json({ data: candidates, success: true, method: 'category' });
   } catch (error) {
     console.error('Similar propositions API error:', error);
     return NextResponse.json(
@@ -83,46 +115,4 @@ export async function GET(
       { status: 500 }
     );
   }
-}
-
-/**
- * Calculate similarity between two propositions.
- * Factors: category match (primary), title keyword overlap (secondary).
- */
-function calculateSimilarity(target: Proposition, candidate: Proposition): number {
-  let score = 0;
-
-  // Same category is the primary signal (0.6 base)
-  if (target.category === candidate.category) {
-    score += 0.6;
-  } else {
-    return 0; // Different category = not similar
-  }
-
-  // Title keyword overlap (up to 0.3)
-  const targetWords = extractKeywords(target.title);
-  const candidateWords = extractKeywords(candidate.title);
-  const overlap = targetWords.filter(w => candidateWords.includes(w)).length;
-  const maxPossible = Math.max(targetWords.length, candidateWords.length, 1);
-  score += (overlap / maxPossible) * 0.3;
-
-  // Recency bonus — more recent comparisons are more relevant (up to 0.1)
-  const yearDiff = Math.abs(target.year - candidate.year);
-  score += Math.max(0, 0.1 - yearDiff * 0.02);
-
-  return Math.min(score, 1);
-}
-
-function extractKeywords(title: string): string[] {
-  const stopWords = new Set([
-    'a', 'an', 'the', 'and', 'or', 'but', 'for', 'to', 'of', 'in', 'on', 'at',
-    'by', 'from', 'with', 'as', 'is', 'was', 'are', 'be', 'been', 'being',
-    'that', 'this', 'it', 'its', 'not', 'no', 'all', 'any', 'each', 'which',
-  ]);
-
-  return title
-    .toLowerCase()
-    .replace(/[^a-z\s]/g, '')
-    .split(/\s+/)
-    .filter(w => w.length > 2 && !stopWords.has(w));
 }

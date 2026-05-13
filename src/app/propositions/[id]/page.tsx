@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { PropositionCard } from '@/components/features';
 import {
   Card, CardHeader, CardTitle, CardContent,
   Tabs, TabsList, TabsTrigger, TabsContent,
@@ -12,7 +11,7 @@ import {
   TrendingUp, DollarSign, Loader2, BarChart2, Map, Link2,
 } from 'lucide-react';
 import {
-  PropositionWithDetails, PropositionPrediction, Proposition, ApiResponse,
+  PropositionWithDetails, PropositionPrediction, ApiResponse,
 } from '@/types';
 import { useState, useEffect } from 'react';
 import {
@@ -22,6 +21,15 @@ import {
 
 interface PageProps {
   params: { id: string };
+}
+
+interface SimilarProp {
+  year: number;
+  propNumber: string;
+  description: string;
+  similarityScore: number;
+  yesPercentage?: number;
+  passed?: boolean;
 }
 
 const REGION_COLORS: Record<string, string> = {
@@ -41,7 +49,8 @@ const CA_REGIONS = [
 export default function PropositionDetailPage({ params }: PageProps) {
   const { id } = params;
   const [proposition, setProposition] = useState<PropositionWithDetails | null>(null);
-  const [similarProps, setSimilarProps] = useState<Proposition[]>([]);
+  const [similarProps, setSimilarProps] = useState<SimilarProp[]>([]);
+  const [similarMethod, setSimilarMethod] = useState<'ml' | 'category' | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -71,10 +80,11 @@ export default function PropositionDetailPage({ params }: PageProps) {
         setProposition(prop);
 
         try {
-          const simRes = await fetch(`/api/propositions?category=${prop.category}&limit=4`);
-          const simData: ApiResponse<Proposition[]> = await simRes.json();
+          const simRes = await fetch(`/api/propositions/${id}/similar`);
+          const simData: ApiResponse<SimilarProp[]> & { method?: 'ml' | 'category' } = await simRes.json();
           if (simData.success) {
-            setSimilarProps(simData.data.filter(p => p.id !== prop.id).slice(0, 3));
+            setSimilarProps(simData.data);
+            setSimilarMethod(simData.method ?? null);
           }
         } catch {}
 
@@ -141,11 +151,14 @@ export default function PropositionDetailPage({ params }: PageProps) {
       ]
     : null;
 
-  const historicalData = proposition.prediction?.historicalComparison?.slice(0, 6).map(h => ({
-    name: `Prop ${h.propositionNumber} (${h.year})`,
-    yes: Math.round(h.yesPercentage),
-    result: h.result,
-  })) ?? [];
+  const historicalData = similarProps
+    .filter(p => p.yesPercentage !== undefined)
+    .map(p => ({
+      name: `Prop ${p.propNumber} (${p.year})`,
+      yes: Math.round(p.yesPercentage!),
+      passed: p.passed,
+      href: `/propositions/${p.year}-${p.propNumber}`,
+    }));
 
   return (
     <div className="animate-fade-in" style={{ background: 'rgb(250 250 248)' }}>
@@ -386,10 +399,18 @@ export default function PropositionDetailPage({ params }: PageProps) {
                 {historicalData.length > 0 && (
                   <Card className="border border-slate-200 lg:col-span-2">
                     <CardHeader className="border-b border-slate-200">
-                      <CardTitle className="text-lg font-bold text-slate-900"
-                        style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
-                        Historical Comparison — Similar Propositions
-                      </CardTitle>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-lg font-bold text-slate-900"
+                          style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+                          Similar Propositions — Yes Vote
+                        </CardTitle>
+                        {similarMethod === 'ml' && (
+                          <span className="text-xs text-indigo-500 font-serif italic">matched via machine learning</span>
+                        )}
+                        {similarMethod === 'category' && (
+                          <span className="text-xs text-slate-400 font-serif italic">matched via categorical search</span>
+                        )}
+                      </div>
                     </CardHeader>
                     <CardContent className="pt-6">
                       <ResponsiveContainer width="100%" height={240}>
@@ -400,13 +421,18 @@ export default function PropositionDetailPage({ params }: PageProps) {
                           <YAxis domain={[0, 100]} tickFormatter={v => `${v}%`}
                             tick={{ fontFamily: 'Georgia', fontSize: 11 }} />
                           <Tooltip formatter={(v: number) => [`${v}%`, 'Yes vote']} />
-                          <Bar dataKey="yes" radius={[2, 2, 0, 0]}>
+                          <Bar dataKey="yes" radius={[2, 2, 0, 0]}
+                            onClick={(entry) => { window.location.href = entry.href; }}
+                            cursor="pointer">
                             {historicalData.map((entry, i) => (
-                              <Cell key={i} fill={entry.result === 'passed' ? '#4f46e5' : '#94a3b8'} />
+                              <Cell key={i} fill={entry.passed ? '#4f46e5' : '#94a3b8'} />
                             ))}
                           </Bar>
                         </BarChart>
                       </ResponsiveContainer>
+                      <p className="text-xs text-slate-400 font-serif mt-2">
+                        Click a bar to view that proposition. Indigo = passed, grey = failed.
+                      </p>
                     </CardContent>
                   </Card>
                 )}
@@ -545,15 +571,45 @@ export default function PropositionDetailPage({ params }: PageProps) {
                     style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
                     Similar {proposition.category.replace(/_/g, ' ')} Propositions
                   </h2>
-                  <p className="text-sm text-slate-500 font-serif">
-                    Other California ballot measures in the same policy category.
-                  </p>
+                  <div className="flex items-center gap-3">
+                    <p className="text-sm text-slate-500 font-serif">
+                      Other California ballot measures in the same policy category.
+                    </p>
+                    {similarMethod === 'ml' && (
+                      <span className="text-xs text-indigo-500 font-serif italic">
+                        matched via machine learning
+                      </span>
+                    )}
+                    {similarMethod === 'category' && (
+                      <span className="text-xs text-slate-400 font-serif italic">
+                        matched via categorical search
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {similarProps.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {similarProps.map(p => (
-                      <PropositionCard key={p.id} proposition={p} showPrediction={false} />
+                      <Link key={`${p.year}-${p.propNumber}`} href={`/propositions/${p.year}-${p.propNumber}`}>
+                        <Card className="border border-slate-200 hover:border-indigo-400 hover:shadow-md transition-all cursor-pointer h-full">
+                          <CardHeader className="pb-2">
+                            <div className="flex items-center justify-between">
+                              <CardTitle className="text-base font-bold font-serif text-slate-900">
+                                Prop {p.propNumber} ({p.year})
+                              </CardTitle>
+                              {similarMethod === 'ml' && (
+                                <span className="text-sm font-semibold text-indigo-600">
+                                  {Math.round(p.similarityScore * 100)}% match
+                                </span>
+                              )}
+                            </div>
+                          </CardHeader>
+                          <CardContent>
+                            <p className="text-sm text-slate-600 font-serif leading-relaxed">{p.description}</p>
+                          </CardContent>
+                        </Card>
+                      </Link>
                     ))}
                   </div>
                 ) : (
