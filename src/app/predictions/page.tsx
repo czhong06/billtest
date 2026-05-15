@@ -12,7 +12,7 @@ import {
   CartesianGrid, Cell, Legend,
 } from 'recharts';
 import { Proposition, PropositionPrediction, ApiResponse } from '@/types';
-import { Loader2, BarChart3, DollarSign, Link2, Trophy } from 'lucide-react';
+import { Loader2, BarChart3, DollarSign, Link2, Trophy, Map } from 'lucide-react';
 
 const CATEGORY_LABELS: Record<string, string> = {
   taxation: 'Taxation',
@@ -145,9 +145,10 @@ export default function PredictionsPage() {
               <span className="ml-3 text-slate-600 font-serif">Loading data…</span>
             </div>
           ) : (
-            <Tabs defaultValue="pass-fail" className="space-y-6">
+            <Tabs defaultValue="map" className="space-y-6">
               <TabsList className="w-full justify-start bg-white border border-slate-200 p-1 rounded-none flex-wrap h-auto">
                 {[
+                  { value: 'map', icon: Map, label: 'Voting Map' },
                   { value: 'similar-props', icon: Link2, label: 'Similar Props' },
                   { value: 'pass-fail', icon: BarChart3, label: 'Pass/Fail by Category' },
                   { value: 'campaign-finance', icon: DollarSign, label: 'Campaign Finance' },
@@ -159,6 +160,17 @@ export default function PredictionsPage() {
                   </TabsTrigger>
                 ))}
               </TabsList>
+
+              {/* ── MAP ── */}
+              <TabsContent value="map">
+                <div style={{ height: 'calc(100vh - 280px)', minHeight: '500px' }}>
+                  <iframe
+                    src="/map.html"
+                    className="w-full h-full border-0"
+                    title="California Voting Map"
+                  />
+                </div>
+              </TabsContent>
 
               {/* ── SIMILAR PROPS ── */}
               <TabsContent value="similar-props">
