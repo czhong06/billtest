@@ -492,28 +492,28 @@ class BallotpediaClient {
           .replace(/\[\d+\]/g, '')   // strip citation markers like [1][2]
           .replace(/\s+/g, ' ').trim();
 
-      // ── Extract vote percentages from the infobox ──
-      // Ballotpedia infoboxes contain rows like:
-      //   <th>Yes votes</th><td>X,XXX,XXX (XX.XX%)</td>
-      // The votePattern captures all "NUMBER (PERCENT%)" pairs in the infobox region.
+      // ── Extract vote percentages ──
+      // Ballotpedia individual pages have an "Election results" section with a table:
+      //   Yes | 4,238,156 | 59.61%
+      //   No  | 2,871,943 | 40.39%
+      // This is reliable for all years, even pre-2022 where the year-overview table lacks counts.
       let yesPercentage: number | undefined;
       let noPercentage: number | undefined;
       let yesVotes: number | undefined;
       let noVotes: number | undefined;
 
-      const infoboxMatch = html.match(/class="[^"]*infobox[^"]*"[\s\S]*?<\/table>/i);
-      const infoboxHtml = infoboxMatch ? infoboxMatch[0] : html;
-      const votePattern = /([\d,]+)\s*\((\d+(?:\.\d+)?)%\)/g;
-      const votePairs: Array<{ count: number; percent: number }> = [];
-      let vm;
-      while ((vm = votePattern.exec(infoboxHtml)) !== null) {
-        votePairs.push({ count: parseInt(vm[1].replace(/,/g, '')), percent: parseFloat(vm[2]) });
-      }
-      if (votePairs.length >= 2) {
-        yesVotes = votePairs[0].count;
-        yesPercentage = votePairs[0].percent;
-        noVotes = votePairs[1].count;
-        noPercentage = votePairs[1].percent;
+      const electionResultsIdx = html.search(/id="Election_results"/i);
+      if (electionResultsIdx !== -1) {
+        const resultsChunk = html.slice(electionResultsIdx, electionResultsIdx + 2000);
+        // Pattern: "Yes" followed by vote count, then percentage; same for "No"
+        const yesMatch = resultsChunk.match(/>\s*Yes\s*<[\s\S]*?>([\d,]+)<[\s\S]*?>([\d.]+)%/i);
+        const noMatch  = resultsChunk.match(/>\s*No\s*<[\s\S]*?>([\d,]+)<[\s\S]*?>([\d.]+)%/i);
+        if (yesMatch && noMatch) {
+          yesVotes = parseInt(yesMatch[1].replace(/,/g, ''));
+          yesPercentage = parseFloat(yesMatch[2]);
+          noVotes = parseInt(noMatch[1].replace(/,/g, ''));
+          noPercentage = parseFloat(noMatch[2]);
+        }
       }
 
       // ── Extract description ──
