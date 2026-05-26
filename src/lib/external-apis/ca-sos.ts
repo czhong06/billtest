@@ -484,18 +484,28 @@ class CASosClient {
       }
     }
 
-    // For props that are missing vote percentages (older years where the year-overview
-    // table only has pass/fail), fetch individual Ballotpedia pages in parallel.
-    // Results are cached permanently since historical vote data never changes.
-    const missingVoteData = allPropositions.filter(
-      p => p.status !== 'upcoming' && (!p.result || p.result.yesPercentage === 0) && bpData.urls.has(p.number)
+    // Identify props that need individual Ballotpedia page fetches:
+    // - missing vote percentages (pre-2022 year-overview tables lack vote counts), OR
+    // - missing a real description (year-overview description was a reformatted title)
+    // Results are cached permanently since historical data never changes.
+    function isBadSummary(p: Proposition) {
+      if (!p.summary || p.summary === p.title) return true;
+      if (/^California Proposition \d+/i.test(p.summary.trim())) return true;
+      if (p.summary.trim().length < 25) return true;
+      return false;
+    }
+    const needsEnrichment = allPropositions.filter(
+      p => p.status !== 'upcoming' &&
+           ((!p.result || p.result.yesPercentage === 0) || isBadSummary(p)) &&
+           bpData.urls.has(p.number)
     );
-    if (missingVoteData.length > 0) {
-      const urlsByNumber = new Map(missingVoteData.map(p => [p.number, bpData.urls.get(p.number)!]));
-      const voteDataMap = await ballotpediaClient.fetchVoteDataBatch(urlsByNumber);
-      for (const prop of missingVoteData) {
-        const vd = voteDataMap.get(prop.number);
-        if (vd) {
+    if (needsEnrichment.length > 0) {
+      const urlsByNumber = new Map(needsEnrichment.map(p => [p.number, bpData.urls.get(p.number)!]));
+      const detailsMap = await ballotpediaClient.fetchVoteDataBatch(urlsByNumber);
+      for (const prop of needsEnrichment) {
+        const vd = detailsMap.get(prop.number);
+        if (!vd) continue;
+        if (vd.yesPercentage > 0 && (!prop.result || prop.result.yesPercentage === 0)) {
           prop.result = {
             passed: vd.yesPercentage > 50,
             yesPercentage: vd.yesPercentage,
@@ -507,8 +517,11 @@ class CASosClient {
           };
           prop.status = prop.result.passed ? 'passed' : 'failed';
         }
+        if (vd.summary && isBadSummary(prop)) {
+          prop.summary = vd.summary;
+        }
       }
-      console.log(`[CA-SOS] Enriched ${voteDataMap.size} props with vote data from individual Ballotpedia pages`);
+      console.log(`[CA-SOS] Enriched ${detailsMap.size} props via individual Ballotpedia pages`);
     }
 
     return allPropositions.sort((a, b) => parseInt(a.number) - parseInt(b.number));

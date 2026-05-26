@@ -105,7 +105,11 @@ function extractDescription(rawText: string): string {
   // Cut at Ballotpedia "was/is on the ballot" boilerplate
   const boilerplateCut = text.search(/\b(?:was|is) on the ballot\b/i);
   if (boilerplateCut !== -1) text = text.slice(0, boilerplateCut);
-  return text.replace(/\s+/g, ' ').trim();
+  const cleaned = text.replace(/\s+/g, ' ').trim();
+  // Reject if what remains is just a reformatted title — the caller will fall back to fetching
+  // the individual Ballotpedia page for a real description
+  if (/^California Proposition \d+/i.test(cleaned)) return '';
+  return cleaned;
 }
 
 export interface PropVoteData {
@@ -113,6 +117,7 @@ export interface PropVoteData {
   noPercentage: number;
   yesVotes: number;
   noVotes: number;
+  summary?: string;
 }
 
 class BallotpediaClient {
@@ -493,16 +498,15 @@ class BallotpediaClient {
       toFetch.map(async ([num, url]) => {
         try {
           const details = await this.fetchPropositionSummary(url);
-          if (details.yesPercentage) {
-            const vd: PropVoteData = {
-              yesPercentage: details.yesPercentage,
-              noPercentage: details.noPercentage ?? (100 - details.yesPercentage),
-              yesVotes: details.yesVotes ?? 0,
-              noVotes: details.noVotes ?? 0,
-            };
-            this.voteDataCache.set(url, vd);
-            out.set(num, vd);
-          }
+          const vd: PropVoteData = {
+            yesPercentage: details.yesPercentage ?? 0,
+            noPercentage: details.noPercentage ?? (details.yesPercentage ? 100 - details.yesPercentage : 0),
+            yesVotes: details.yesVotes ?? 0,
+            noVotes: details.noVotes ?? 0,
+            summary: details.summary || undefined,
+          };
+          this.voteDataCache.set(url, vd);
+          out.set(num, vd);
         } catch { /* non-critical */ }
       })
     );
