@@ -241,7 +241,7 @@ export default function PropositionsPage() {
                 <BarChart3 className="h-6 w-6 text-blue-900" />
               </div>
               <p className="text-3xl font-bold text-gray-900 text-center">
-                {isInitialLoading || isBackgroundLoading ? PLACEHOLDER_TOTAL : filteredPropositions.length}
+                {isInitialLoading ? PLACEHOLDER_TOTAL : filteredPropositions.length}
               </p>
               <p className="text-sm text-gray-600 text-center mt-1">Total Propositions</p>
             </div>
@@ -250,7 +250,7 @@ export default function PropositionsPage() {
                 <TrendingUp className="h-6 w-6 text-blue-900" />
               </div>
               <p className="text-3xl font-bold text-blue-900 text-center">
-                {isInitialLoading || isBackgroundLoading ? PLACEHOLDER_UPCOMING : upcomingCount}
+                {isInitialLoading ? PLACEHOLDER_UPCOMING : upcomingCount}
               </p>
               <p className="text-sm text-gray-600 text-center mt-1">Upcoming</p>
             </div>
@@ -259,7 +259,7 @@ export default function PropositionsPage() {
                 <CheckCircle className="h-6 w-6 text-green-700" />
               </div>
               <p className="text-3xl font-bold text-green-700 text-center">
-                {isInitialLoading || isBackgroundLoading ? PLACEHOLDER_PASSED : passedCount}
+                {isInitialLoading ? PLACEHOLDER_PASSED : passedCount}
               </p>
               <p className="text-sm text-gray-600 text-center mt-1">Passed</p>
             </div>
@@ -268,7 +268,7 @@ export default function PropositionsPage() {
                 <XCircle className="h-6 w-6 text-red-700" />
               </div>
               <p className="text-3xl font-bold text-red-700 text-center">
-                {isInitialLoading || isBackgroundLoading ? PLACEHOLDER_FAILED : failedCount}
+                {isInitialLoading ? PLACEHOLDER_FAILED : failedCount}
               </p>
               <p className="text-sm text-gray-600 text-center mt-1">Failed</p>
             </div>

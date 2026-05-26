@@ -35,10 +35,12 @@ function getSummaryText(proposition: PropositionWithDetails): string {
     if (trimmed.length < 30) continue;
     if (/^\$?[\d,]+\.?\d*$/.test(trimmed)) continue;
     if (/^\$[\d,]+/.test(trimmed) && trimmed.length < 60) continue;
-    // Strip the "was/is on the ballot" boilerplate sentence rather than discarding the whole text
+    // Strip the "was/is on the ballot" boilerplate
     const boilerplateIdx = trimmed.search(/\b(?:was|is) on the ballot\b/i);
     if (boilerplateIdx !== -1) trimmed = trimmed.slice(0, boilerplateIdx).trim();
     if (trimmed.length < 30) continue;
+    // Reject anything that's just a reformatted title ("California Proposition N, ...")
+    if (/^California Proposition \d+/i.test(trimmed)) continue;
     return trimmed;
   }
   const categoryLabel = proposition.category.replace(/_/g, ' ');
@@ -171,31 +173,44 @@ export default function PropositionDetailPage({ params }: PageProps) {
       {/* Quick stats */}
       <section className="py-5 bg-white border-b border-slate-200">
         <div className="container mx-auto px-4">
-          <div className={`grid gap-4 ${proposition.finance ? 'grid-cols-2 md:grid-cols-3' : 'grid-cols-1 md:grid-cols-2'}`}>
-            {[
-              { icon: Calendar,   label: 'Election Date', value: formatDate(proposition.electionDate), color: '' },
-              { icon: TrendingUp, label: 'Yes Vote',
-                value: proposition.result?.yesPercentage
-                  ? `${proposition.result.yesPercentage.toFixed(1)}%`
-                  : 'N/A',
-                color: proposition.result?.yesPercentage
-                  ? (proposition.result.yesPercentage >= 50 ? 'text-emerald-700' : 'text-rose-600')
-                  : '' },
-              ...(proposition.finance ? [{
-                icon: DollarSign, label: 'Total Funding',
-                value: formatCurrency(proposition.finance.totalSupport + proposition.finance.totalOpposition),
-                color: '',
-              }] : []),
-            ].map(({ icon: Icon, label, value, color }) => (
-              <div key={label} className="bg-slate-50 border border-slate-200 p-4 flex items-center gap-3">
-                <Icon className="h-5 w-5 text-slate-400 shrink-0" />
-                <div>
-                  <p className="text-xs text-slate-400 font-serif uppercase tracking-wide">{label}</p>
-                  <p className={`font-bold font-serif ${color || 'text-slate-900'}`}>{value}</p>
+          {(() => {
+            const hasYes = (proposition.result?.yesPercentage ?? 0) > 0;
+            const cols = [1, hasYes ? 1 : 0, proposition.finance ? 1 : 0].reduce((a, b) => a + b, 0);
+            const colClass = cols === 3 ? 'grid-cols-2 md:grid-cols-3' : cols === 2 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1';
+            return (
+              <div className={`grid gap-4 ${colClass}`}>
+                <div className="bg-slate-50 border border-slate-200 p-4 flex items-center gap-3">
+                  <Calendar className="h-5 w-5 text-slate-400 shrink-0" />
+                  <div>
+                    <p className="text-xs text-slate-400 font-serif uppercase tracking-wide">Election Date</p>
+                    <p className="font-bold font-serif text-slate-900">{formatDate(proposition.electionDate)}</p>
+                  </div>
                 </div>
+                {hasYes && (
+                  <div className="bg-slate-50 border border-slate-200 p-4 flex items-center gap-3">
+                    <TrendingUp className="h-5 w-5 text-slate-400 shrink-0" />
+                    <div>
+                      <p className="text-xs text-slate-400 font-serif uppercase tracking-wide">Yes Vote</p>
+                      <p className={`font-bold font-serif ${proposition.result!.yesPercentage >= 50 ? 'text-emerald-700' : 'text-rose-600'}`}>
+                        {proposition.result!.yesPercentage.toFixed(1)}%
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {proposition.finance && (
+                  <div className="bg-slate-50 border border-slate-200 p-4 flex items-center gap-3">
+                    <DollarSign className="h-5 w-5 text-slate-400 shrink-0" />
+                    <div>
+                      <p className="text-xs text-slate-400 font-serif uppercase tracking-wide">Total Funding</p>
+                      <p className="font-bold font-serif text-slate-900">
+                        {formatCurrency(proposition.finance.totalSupport + proposition.finance.totalOpposition)}
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
-            ))}
-          </div>
+            );
+          })()}
         </div>
       </section>
 

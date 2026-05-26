@@ -507,9 +507,13 @@ class BallotpediaClient {
         const boilerplateIdx = text.search(/\b(?:was|is) on the ballot\b/i);
         if (boilerplateIdx !== -1) {
           const before = text.slice(0, boilerplateIdx).replace(/\s+/g, ' ').trim();
-          if (before.length >= 30) return before.slice(0, 600);
+          // Reject if it's just "California Proposition N, Title" — still a reformatted title
+          if (before.length >= 30 && !/^California Proposition \d+/i.test(before)) {
+            return before.slice(0, 600);
+          }
           continue;
         }
+        if (/^California Proposition \d+/i.test(text)) continue;
         return text.slice(0, 600);
       }
 
