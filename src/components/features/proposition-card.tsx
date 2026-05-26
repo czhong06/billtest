@@ -68,17 +68,6 @@ export function PropositionCard({
               <p className="text-gray-700 mt-1 text-sm font-serif line-clamp-2 leading-relaxed">
                 {proposition.title}
               </p>
-              {proposition.summary &&
-               proposition.summary !== proposition.title &&
-               proposition.status !== 'upcoming' &&
-               !/^\$?[\d,]+\.?\d*$/.test(proposition.summary.trim()) &&
-               !/was on the ballot|is on the ballot/i.test(proposition.summary) &&
-               !/^California Proposition \d+/i.test(proposition.summary.trim()) &&
-               proposition.summary.trim().length >= 25 && (
-                <p className="text-gray-500 mt-1 text-xs font-serif line-clamp-2 italic">
-                  {proposition.summary}
-                </p>
-              )}
             </div>
             <span
               className="text-5xl font-black text-gray-100 shrink-0 leading-none"
