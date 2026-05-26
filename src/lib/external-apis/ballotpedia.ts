@@ -490,31 +490,48 @@ class BallotpediaClient {
 
     if (toFetch.length === 0) return out;
 
-    await Promise.all(
-      toFetch.map(async ([num, url]) => {
+    // Fetch in batches of 4 to avoid triggering Ballotpedia rate limiting
+    const CONCURRENCY = 4;
+    for (let i = 0; i < toFetch.length; i += CONCURRENCY) {
+      const batch = toFetch.slice(i, i + CONCURRENCY);
+      await Promise.all(batch.map(async ([num, url]) => {
         try {
           const details = await this.fetchPropositionSummary(url);
-          const vd: PropVoteData = {
-            yesPercentage: details.yesPercentage ?? 0,
-            noPercentage: details.noPercentage ?? (details.yesPercentage ? 100 - details.yesPercentage : 0),
-            yesVotes: details.yesVotes ?? 0,
-            noVotes: details.noVotes ?? 0,
-            summary: details.summary || undefined,
-          };
-          this.voteDataCache.set(url, vd);
-          out.set(num, vd);
+          // Only cache if we got real vote data — don't poison the cache with empty results
+          // so a timeout or Ballotpedia block doesn't permanently zero out a prop's votes
+          if (details.yesPercentage) {
+            const vd: PropVoteData = {
+              yesPercentage: details.yesPercentage,
+              noPercentage: details.noPercentage ?? (100 - details.yesPercentage),
+              yesVotes: details.yesVotes ?? 0,
+              noVotes: details.noVotes ?? 0,
+              summary: details.summary || undefined,
+            };
+            this.voteDataCache.set(url, vd);
+            out.set(num, vd);
+          } else if (details.summary) {
+            // Got a description but no vote data — cache summary only
+            const vd: PropVoteData = {
+              yesPercentage: 0,
+              noPercentage: 0,
+              yesVotes: 0,
+              noVotes: 0,
+              summary: details.summary,
+            };
+            this.voteDataCache.set(url, vd);
+            out.set(num, vd);
+          }
         } catch { /* non-critical */ }
-      })
-    );
+      }));
+    }
 
     return out;
   }
 
   /**
    * Fetch the official ballot title/description AND vote percentages from an individual
-   * Ballotpedia proposition page. Vote data is extracted from the infobox table so that
-   * older elections (pre-2022) whose year-overview pages lack vote counts can still show
-   * the real yes/no percentages.
+   * Ballotpedia proposition page. Vote data is extracted from the Election results section
+   * which exists on all years, making this reliable for pre-2022 elections too.
    */
   async fetchPropositionSummary(url: string): Promise<{
     summary: string;
