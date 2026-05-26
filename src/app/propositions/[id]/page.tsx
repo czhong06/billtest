@@ -8,16 +8,12 @@ import {
 import { formatDate, formatCurrency } from '@/lib/utils';
 import {
   ArrowLeft, Calendar, FileText, ExternalLink,
-  TrendingUp, DollarSign, Loader2, BarChart2, Map, Link2,
+  TrendingUp, DollarSign, Loader2, Link2,
 } from 'lucide-react';
 import {
   PropositionWithDetails, PropositionPrediction, ApiResponse,
 } from '@/types';
 import { useState, useEffect } from 'react';
-import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend, CartesianGrid,
-} from 'recharts';
 
 interface PageProps {
   params: { id: string };
@@ -32,19 +28,31 @@ interface SimilarProp {
   passed?: boolean;
 }
 
-const REGION_COLORS: Record<string, string> = {
-  'Bay Area':       '#4f46e5',
-  'Southern CA':    '#0ea5e9',
-  'Central Valley': '#10b981',
-  'Northern CA':    '#f59e0b',
-};
-
-const CA_REGIONS = [
-  { name: 'Bay Area',       counties: ['San Francisco','Alameda','Santa Clara','Contra Costa','Marin','San Mateo','Sonoma','Napa','Solano'] },
-  { name: 'Southern CA',    counties: ['Los Angeles','San Diego','Orange','Riverside','San Bernardino','Ventura','Santa Barbara','San Luis Obispo','Imperial'] },
-  { name: 'Central Valley', counties: ['Fresno','Kern','Tulare','Kings','Madera','Merced','Stanislaus','San Joaquin','Sacramento','Yolo','El Dorado','Placer'] },
-  { name: 'Northern CA',    counties: ['Shasta','Butte','Humboldt','Mendocino','Trinity','Siskiyou','Modoc','Lassen','Tehama','Glenn','Lake','Del Norte'] },
-];
+function getSummaryText(proposition: PropositionWithDetails): string {
+  const candidates = [proposition.fullText, proposition.summary].filter(Boolean) as string[];
+  for (const text of candidates) {
+    const trimmed = text.trim();
+    if (trimmed.length < 30) continue;
+    if (/^\$?[\d,]+\.?\d*$/.test(trimmed)) continue;
+    if (/^\$[\d,]+/.test(trimmed) && trimmed.length < 60) continue;
+    return trimmed;
+  }
+  const categoryLabel = proposition.category.replace(/_/g, ' ');
+  const statusWord = proposition.status === 'passed' ? 'passed'
+    : proposition.status === 'failed' ? 'failed'
+    : proposition.status === 'upcoming' ? 'is on the upcoming ballot'
+    : 'is currently active';
+  let fallback = `California Proposition ${proposition.number} (${proposition.year}) is a ${categoryLabel} measure that ${statusWord}.`;
+  if (proposition.result && proposition.result.yesPercentage > 0) {
+    fallback += ` It received ${proposition.result.yesPercentage.toFixed(1)}% Yes and ${proposition.result.noPercentage.toFixed(1)}% No`;
+    if (proposition.result.totalVotes > 0) {
+      fallback += ` out of ${proposition.result.totalVotes.toLocaleString()} total votes cast`;
+    }
+    fallback += '.';
+  }
+  fallback += ' For full official text and analysis, see the external resources below.';
+  return fallback;
+}
 
 export default function PropositionDetailPage({ params }: PageProps) {
   const { id } = params;
@@ -132,34 +140,6 @@ export default function PropositionDetailPage({ params }: PageProps) {
 
   const passProb = proposition.prediction?.passageProbability ?? null;
 
-  const voteData = proposition.result && proposition.result.yesPercentage > 0
-    ? [
-        { name: 'Yes', value: proposition.result.yesPercentage, color: '#4f46e5' },
-        { name: 'No',  value: proposition.result.noPercentage,  color: '#94a3b8' },
-      ]
-    : passProb !== null
-    ? [
-        { name: 'Pass', value: Math.round(passProb * 100),       color: '#4f46e5' },
-        { name: 'Fail', value: Math.round((1 - passProb) * 100), color: '#94a3b8' },
-      ]
-    : null;
-
-  const financeData = proposition.finance
-    ? [
-        { name: 'Support',    amount: proposition.finance.totalSupport,    fill: '#4f46e5' },
-        { name: 'Opposition', amount: proposition.finance.totalOpposition, fill: '#94a3b8' },
-      ]
-    : null;
-
-  const historicalData = similarProps
-    .filter(p => p.yesPercentage !== undefined)
-    .map(p => ({
-      name: `Prop ${p.propNumber} (${p.year})`,
-      yes: Math.round(p.yesPercentage!),
-      passed: p.passed,
-      href: `/propositions/${p.year}-${p.propNumber}`,
-    }));
-
   return (
     <div className="animate-fade-in" style={{ background: 'rgb(250 250 248)' }}>
 
@@ -216,10 +196,8 @@ export default function PropositionDetailPage({ params }: PageProps) {
           <Tabs defaultValue="details" className="space-y-6">
             <TabsList className="w-full justify-start bg-white border border-slate-200 p-1 rounded-none flex-wrap h-auto">
               {[
-                { value: 'details', icon: FileText,  label: 'Full Details' },
-                { value: 'visuals', icon: BarChart2, label: 'Visualizations' },
-                { value: 'map',     icon: Map,       label: 'Map' },
-                { value: 'similar', icon: Link2,     label: 'Similar Propositions' },
+                { value: 'details', icon: FileText, label: 'Full Details' },
+                { value: 'similar', icon: Link2,    label: 'Similar Propositions' },
               ].map(({ value, icon: Icon, label }) => (
                 <TabsTrigger key={value} value={value}
                   className="gap-2 rounded-none data-[state=active]:bg-indigo-600 data-[state=active]:text-white">
@@ -241,7 +219,7 @@ export default function PropositionDetailPage({ params }: PageProps) {
                     </CardHeader>
                     <CardContent className="pt-6">
                       <p className="text-slate-700 leading-relaxed font-serif">
-                        {proposition.fullText || proposition.summary}
+                        {getSummaryText(proposition)}
                       </p>
                     </CardContent>
                   </Card>
@@ -347,221 +325,6 @@ export default function PropositionDetailPage({ params }: PageProps) {
               </div>
             </TabsContent>
 
-            {/* VISUALIZATIONS */}
-            <TabsContent value="visuals">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {voteData && (
-                  <Card className="border border-slate-200">
-                    <CardHeader className="border-b border-slate-200">
-                      <CardTitle className="text-lg font-bold text-slate-900"
-                        style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
-                        {proposition.result?.yesPercentage ? 'Final Vote Split' : 'Passage Probability'}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-6">
-                      <ResponsiveContainer width="100%" height={220}>
-                        <PieChart>
-                          <Pie data={voteData} cx="50%" cy="50%" innerRadius={55} outerRadius={85}
-                            dataKey="value" nameKey="name" label={({ name, value }) => `${name}: ${value}%`}>
-                            {voteData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                          </Pie>
-                          <Legend />
-                          <Tooltip formatter={(v: number) => `${v}%`} />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {financeData && (
-                  <Card className="border border-slate-200">
-                    <CardHeader className="border-b border-slate-200">
-                      <CardTitle className="text-lg font-bold text-slate-900"
-                        style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>Campaign Finance</CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-6">
-                      <ResponsiveContainer width="100%" height={220}>
-                        <BarChart data={financeData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                          <XAxis dataKey="name" tick={{ fontFamily: 'Georgia', fontSize: 12 }} />
-                          <YAxis tickFormatter={v => `$${(v / 1_000_000).toFixed(1)}M`}
-                            tick={{ fontFamily: 'Georgia', fontSize: 11 }} />
-                          <Tooltip formatter={(v: number) => [`$${v.toLocaleString()}`, 'Raised']} />
-                          <Bar dataKey="amount" radius={[2, 2, 0, 0]}>
-                            {financeData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {historicalData.length > 0 && (
-                  <Card className="border border-slate-200 lg:col-span-2">
-                    <CardHeader className="border-b border-slate-200">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-lg font-bold text-slate-900"
-                          style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
-                          Similar Propositions — Yes Vote
-                        </CardTitle>
-                        {similarMethod === 'ml' && (
-                          <span className="text-xs text-indigo-500 font-serif italic">matched via machine learning</span>
-                        )}
-                        {similarMethod === 'category' && (
-                          <span className="text-xs text-slate-400 font-serif italic">matched via categorical search</span>
-                        )}
-                      </div>
-                    </CardHeader>
-                    <CardContent className="pt-6">
-                      <ResponsiveContainer width="100%" height={240}>
-                        <BarChart data={historicalData} margin={{ top: 5, right: 20, left: 10, bottom: 40 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                          <XAxis dataKey="name" angle={-30} textAnchor="end"
-                            tick={{ fontFamily: 'Georgia', fontSize: 11 }} />
-                          <YAxis domain={[0, 100]} tickFormatter={v => `${v}%`}
-                            tick={{ fontFamily: 'Georgia', fontSize: 11 }} />
-                          <Tooltip formatter={(v: number) => [`${v}%`, 'Yes vote']} />
-                          <Bar dataKey="yes" radius={[2, 2, 0, 0]}
-                            onClick={(entry) => { window.location.href = entry.href; }}
-                            cursor="pointer">
-                            {historicalData.map((entry, i) => (
-                              <Cell key={i} fill={entry.passed ? '#4f46e5' : '#94a3b8'} />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                      <p className="text-xs text-slate-400 font-serif mt-2">
-                        Click a bar to view that proposition. Indigo = passed, grey = failed.
-                      </p>
-                    </CardContent>
-                  </Card>
-                )}
-
-                <Card className="border border-slate-200 lg:col-span-2">
-                  <CardHeader className="border-b border-slate-200">
-                    <CardTitle className="text-lg font-bold text-slate-900"
-                      style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
-                      Historical Pass Rate by Topic Category
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-6">
-                    <ResponsiveContainer width="100%" height={220}>
-                      <BarChart
-                        data={[
-                          { category: 'Bonds',      passRate: 67 },
-                          { category: 'Education',  passRate: 55 },
-                          { category: 'Taxes',      passRate: 49 },
-                          { category: 'Insurance',  passRate: 22 },
-                          { category: 'Healthcare', passRate: 44 },
-                          { category: 'Labor',      passRate: 51 },
-                          { category: 'Housing',    passRate: 38 },
-                          { category: 'Criminal J', passRate: 53 },
-                        ]}
-                        margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                        <XAxis dataKey="category" tick={{ fontFamily: 'Georgia', fontSize: 11 }} />
-                        <YAxis domain={[0, 100]} tickFormatter={v => `${v}%`}
-                          tick={{ fontFamily: 'Georgia', fontSize: 11 }} />
-                        <Tooltip formatter={(v: number) => [`${v}%`, 'Historical pass rate']} />
-                        <Bar dataKey="passRate" radius={[2, 2, 0, 0]}>
-                          {[67,55,49,22,44,51,38,53].map((v, i) => (
-                            <Cell key={i} fill={v >= 50 ? '#4f46e5' : '#94a3b8'} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                    <p className="text-xs text-slate-400 font-serif mt-2">
-                      Based on California ballot proposition data 1980–2025.
-                    </p>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-
-            {/* MAP */}
-            <TabsContent value="map">
-              <Card className="border border-slate-200">
-                <CardHeader className="border-b border-slate-200">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <CardTitle className="text-xl font-bold text-slate-900 mb-1"
-                        style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
-                        Regional Support — Proposition {proposition.number}
-                      </CardTitle>
-                      <p className="text-sm text-slate-400 font-serif">
-                        Estimated regional vote breakdown based on historical county-level patterns.
-                      </p>
-                    </div>
-                    <span className="text-xs bg-amber-100 text-amber-800 border border-amber-300 px-2 py-1 font-serif uppercase tracking-widest shrink-0">
-                      Interactive Map In Development
-                    </span>
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="flex flex-col items-center justify-center">
-                      <svg viewBox="0 0 200 280" className="w-48 h-64 drop-shadow-sm">
-                        <path d="M60,10 L140,10 L145,50 L130,55 L120,70 L60,70 Z" fill={REGION_COLORS['Northern CA']} opacity="0.85" />
-                        <path d="M55,70 L120,70 L115,120 L95,130 L70,125 L55,110 Z" fill={REGION_COLORS['Bay Area']} opacity="0.85" />
-                        <path d="M120,70 L150,75 L155,160 L115,165 L115,120 Z" fill={REGION_COLORS['Central Valley']} opacity="0.85" />
-                        <path d="M55,110 L70,125 L95,130 L115,165 L155,160 L160,220 L80,240 L55,200 Z" fill={REGION_COLORS['Southern CA']} opacity="0.85" />
-                        {[
-                          { x: 98, y: 42, label: 'Northern CA' },
-                          { x: 82, y: 97, label: 'Bay Area' },
-                          { x: 136, y: 118, label: 'Central' },
-                          { x: 105, y: 185, label: 'Southern CA' },
-                        ].map(({ x, y, label }) => (
-                          <text key={label} x={x} y={y} textAnchor="middle"
-                            fontSize="9" fill="white" fontWeight="bold" fontFamily="Georgia">{label}</text>
-                        ))}
-                      </svg>
-                      <div className="mt-3 flex flex-wrap gap-2 justify-center">
-                        {Object.entries(REGION_COLORS).map(([name, color]) => (
-                          <div key={name} className="flex items-center gap-1 text-xs font-serif text-slate-600">
-                            <div className="w-3 h-3 rounded-sm" style={{ background: color }} />
-                            {name}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div>
-                      <p className="kicker mb-4">Estimated Regional Breakdown</p>
-                      <div className="space-y-4">
-                        {CA_REGIONS.map(region => {
-                          const seed = region.name.charCodeAt(0) % 20 - 10;
-                          const base = passProb !== null ? passProb * 100 : 52;
-                          const yes = Math.min(99, Math.max(1, Math.round(base + seed)));
-                          const col = REGION_COLORS[region.name];
-                          return (
-                            <div key={region.name}>
-                              <div className="flex items-center justify-between mb-1">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-2.5 h-2.5 rounded-sm" style={{ background: col }} />
-                                  <span className="text-sm font-semibold font-serif text-slate-700">{region.name}</span>
-                                </div>
-                                <div className="text-xs font-serif text-slate-500">
-                                  <span className="text-indigo-700 font-bold">Yes {yes}%</span>
-                                  {' · '}
-                                  <span>No {100 - yes}%</span>
-                                </div>
-                              </div>
-                              <div className="h-2 bg-slate-100 overflow-hidden">
-                                <div className="h-full transition-all" style={{ width: `${yes}%`, background: col }} />
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      <p className="text-xs text-slate-400 font-serif mt-4 italic">
-                        Estimates modeled from historical {proposition.category.replace(/_/g, ' ')} proposition results by region.
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
             {/* SIMILAR PROPOSITIONS */}
             <TabsContent value="similar">
               <div className="space-y-6">
@@ -627,7 +390,7 @@ export default function PropositionDetailPage({ params }: PageProps) {
 
                 <Card className="border border-indigo-100 bg-indigo-50">
                   <CardContent className="py-5 flex items-start gap-4">
-                    <BarChart2 className="h-6 w-6 text-indigo-600 shrink-0 mt-0.5" />
+                    <FileText className="h-6 w-6 text-indigo-600 shrink-0 mt-0.5" />
                     <div>
                       <p className="font-semibold text-indigo-900 font-serif mb-1">
                         Historical context for {proposition.category.replace(/_/g, ' ')} propositions
