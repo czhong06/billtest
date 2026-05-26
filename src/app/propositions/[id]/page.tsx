@@ -35,6 +35,7 @@ function getSummaryText(proposition: PropositionWithDetails): string {
     if (trimmed.length < 30) continue;
     if (/^\$?[\d,]+\.?\d*$/.test(trimmed)) continue;
     if (/^\$[\d,]+/.test(trimmed) && trimmed.length < 60) continue;
+    if (/was on the ballot|is on the ballot/i.test(trimmed)) continue;
     return trimmed;
   }
   const categoryLabel = proposition.category.replace(/_/g, ' ');

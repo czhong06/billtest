@@ -495,9 +495,11 @@ class BallotpediaClient {
       let paraMatch;
       while ((paraMatch = paraPattern.exec(searchHtml)) !== null) {
         const text = clean(paraMatch[1]);
-        // Skip short paras, nav boilerplate, and Ballotpedia meta-text
+        // Skip short paras, nav boilerplate, Ballotpedia meta-text, and the
+        // Wikipedia-style "was on the ballot in California" intro sentence
         if (text.length < 60) continue;
         if (/ballotpedia|this article|click here|retrieved from/i.test(text)) continue;
+        if (/was on the ballot|is on the ballot/i.test(text)) continue;
         return text.slice(0, 600);
       }
 

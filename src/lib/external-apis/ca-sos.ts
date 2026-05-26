@@ -698,11 +698,19 @@ class CASosClient {
 
     if (summaryIsThin) {
       const bpData = await ballotpediaClient.fetchYearResults(year).catch(() => null);
-      const bpUrl = bpData?.urls.get(number);
-      if (bpUrl) {
-        const bpSummary = await ballotpediaClient.fetchPropositionSummary(bpUrl);
-        if (bpSummary && bpSummary.length > prop.summary.length) {
-          prop.summary = bpSummary;
+
+      // 1. Year-table description is already scraped and often has the real ballot text
+      const tableDesc = bpData?.descriptions.get(number);
+      if (tableDesc && tableDesc.trim().length >= 60) {
+        prop.summary = tableDesc.trim();
+      } else {
+        // 2. Fall back to individual Ballotpedia page (skips boilerplate in the scraper)
+        const bpUrl = bpData?.urls.get(number);
+        if (bpUrl) {
+          const bpSummary = await ballotpediaClient.fetchPropositionSummary(bpUrl);
+          if (bpSummary && bpSummary.length > prop.summary.length) {
+            prop.summary = bpSummary;
+          }
         }
       }
     }
