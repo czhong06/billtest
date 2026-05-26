@@ -696,22 +696,39 @@ class CASosClient {
       prop.summary.trim().length < 60 ||
       prop.summary.trim() === prop.title.trim();
 
-    if (summaryIsThin) {
-      const bpData = await ballotpediaClient.fetchYearResults(year).catch(() => null);
+    const bpData = await ballotpediaClient.fetchYearResults(year).catch(() => null);
+    const bpUrl = bpData?.urls.get(number);
 
+    if (summaryIsThin) {
       // 1. Year-table description is already scraped and often has the real ballot text
       const tableDesc = bpData?.descriptions.get(number);
       if (tableDesc && tableDesc.trim().length >= 20) {
         prop.summary = tableDesc.trim();
-      } else {
-        // 2. Fall back to individual Ballotpedia page (skips boilerplate in the scraper)
-        const bpUrl = bpData?.urls.get(number);
-        if (bpUrl) {
-          const bpSummary = await ballotpediaClient.fetchPropositionSummary(bpUrl);
-          if (bpSummary && bpSummary.length > prop.summary.length) {
-            prop.summary = bpSummary;
-          }
-        }
+      }
+    }
+
+    // Always fetch the individual Ballotpedia page when we have the URL:
+    // - It may have a better description than the year-table
+    // - It has vote percentages for older elections that the year-table omits
+    if (bpUrl) {
+      const bpDetails = await ballotpediaClient.fetchPropositionSummary(bpUrl);
+
+      if (bpDetails.summary && bpDetails.summary.length > prop.summary.length) {
+        prop.summary = bpDetails.summary;
+      }
+
+      // Apply vote data when the current result lacks percentages (yesPercentage === 0)
+      if (bpDetails.yesPercentage && (!prop.result || prop.result.yesPercentage === 0)) {
+        prop.result = {
+          passed: bpDetails.yesPercentage > 50,
+          yesPercentage: bpDetails.yesPercentage,
+          noPercentage: bpDetails.noPercentage ?? (100 - bpDetails.yesPercentage),
+          yesVotes: bpDetails.yesVotes ?? 0,
+          noVotes: bpDetails.noVotes ?? 0,
+          totalVotes: (bpDetails.yesVotes ?? 0) + (bpDetails.noVotes ?? 0),
+          turnout: 0,
+        };
+        prop.status = prop.result.passed ? 'passed' : 'failed';
       }
     }
 

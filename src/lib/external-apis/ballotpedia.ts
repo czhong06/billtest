@@ -460,10 +460,18 @@ class BallotpediaClient {
   }
 
   /**
-   * Fetch the official ballot title / description from an individual Ballotpedia proposition page.
-   * Returns an empty string if nothing useful is found.
+   * Fetch the official ballot title/description AND vote percentages from an individual
+   * Ballotpedia proposition page. Vote data is extracted from the infobox table so that
+   * older elections (pre-2022) whose year-overview pages lack vote counts can still show
+   * the real yes/no percentages.
    */
-  async fetchPropositionSummary(url: string): Promise<string> {
+  async fetchPropositionSummary(url: string): Promise<{
+    summary: string;
+    yesPercentage?: number;
+    noPercentage?: number;
+    yesVotes?: number;
+    noVotes?: number;
+  }> {
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 8000);
@@ -475,7 +483,7 @@ class BallotpediaClient {
         signal: controller.signal,
       });
       clearTimeout(timeout);
-      if (!response.ok) return '';
+      if (!response.ok) return { summary: '' };
 
       const html = await response.text();
 
@@ -484,13 +492,38 @@ class BallotpediaClient {
           .replace(/\[\d+\]/g, '')   // strip citation markers like [1][2]
           .replace(/\s+/g, ' ').trim();
 
+      // ── Extract vote percentages from the infobox ──
+      // Ballotpedia infoboxes contain rows like:
+      //   <th>Yes votes</th><td>X,XXX,XXX (XX.XX%)</td>
+      // The votePattern captures all "NUMBER (PERCENT%)" pairs in the infobox region.
+      let yesPercentage: number | undefined;
+      let noPercentage: number | undefined;
+      let yesVotes: number | undefined;
+      let noVotes: number | undefined;
+
+      const infoboxMatch = html.match(/class="[^"]*infobox[^"]*"[\s\S]*?<\/table>/i);
+      const infoboxHtml = infoboxMatch ? infoboxMatch[0] : html;
+      const votePattern = /([\d,]+)\s*\((\d+(?:\.\d+)?)%\)/g;
+      const votePairs: Array<{ count: number; percent: number }> = [];
+      let vm;
+      while ((vm = votePattern.exec(infoboxHtml)) !== null) {
+        votePairs.push({ count: parseInt(vm[1].replace(/,/g, '')), percent: parseFloat(vm[2]) });
+      }
+      if (votePairs.length >= 2) {
+        yesVotes = votePairs[0].count;
+        yesPercentage = votePairs[0].percent;
+        noVotes = votePairs[1].count;
+        noPercentage = votePairs[1].percent;
+      }
+
+      // ── Extract description ──
       // 1. Try the ballot title from the infobox table (most reliable)
       const ballotTitleMatch = html.match(
         /(?:Ballot\s+title|Official\s+title)[^<]*<\/th>\s*<td[^>]*>([\s\S]*?)<\/td>/i
       );
       if (ballotTitleMatch) {
         const text = clean(ballotTitleMatch[1]);
-        if (text.length > 20) return text;
+        if (text.length > 20) return { summary: text, yesPercentage, noPercentage, yesVotes, noVotes };
       }
 
       // 2. Try the first <p> in the mw-parser-output section (Wikipedia-style intro)
@@ -502,24 +535,21 @@ class BallotpediaClient {
         const text = clean(paraMatch[1]);
         if (text.length < 30) continue;
         if (/ballotpedia|this article|click here|retrieved from/i.test(text)) continue;
-        // If the paragraph contains the "was/is on the ballot" boilerplate, salvage
-        // any useful text that appears before it rather than skipping the whole thing
         const boilerplateIdx = text.search(/\b(?:was|is) on the ballot\b/i);
         if (boilerplateIdx !== -1) {
           const before = text.slice(0, boilerplateIdx).replace(/\s+/g, ' ').trim();
-          // Reject if it's just "California Proposition N, Title" — still a reformatted title
           if (before.length >= 30 && !/^California Proposition \d+/i.test(before)) {
-            return before.slice(0, 600);
+            return { summary: before.slice(0, 600), yesPercentage, noPercentage, yesVotes, noVotes };
           }
           continue;
         }
         if (/^California Proposition \d+/i.test(text)) continue;
-        return text.slice(0, 600);
+        return { summary: text.slice(0, 600), yesPercentage, noPercentage, yesVotes, noVotes };
       }
 
-      return '';
+      return { summary: '', yesPercentage, noPercentage, yesVotes, noVotes };
     } catch {
-      return '';
+      return { summary: '' };
     }
   }
 
