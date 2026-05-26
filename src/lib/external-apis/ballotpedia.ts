@@ -108,10 +108,19 @@ function extractDescription(rawText: string): string {
   return text.replace(/\s+/g, ' ').trim();
 }
 
+export interface PropVoteData {
+  yesPercentage: number;
+  noPercentage: number;
+  yesVotes: number;
+  noVotes: number;
+}
+
 class BallotpediaClient {
   private baseUrl: string;
   private resultsCache: Map<number, { data: BallotpediaYearResults; fetchedAt: number }> = new Map();
   private upcomingCache: Map<number, BallotpediaUpcomingMeasure[]> = new Map();
+  // Cache for individual page vote data — historical data never changes so no TTL
+  private voteDataCache: Map<string, PropVoteData> = new Map();
   private static CACHE_TTL = 3_600_000; // 1 hour
 
   constructor() {
@@ -457,6 +466,48 @@ class BallotpediaClient {
     }
 
     return { results, statuses, titles, descriptions, subjects, urls };
+  }
+
+  /**
+   * Fetch vote percentages for a batch of propositions that have Ballotpedia URLs
+   * but no vote data from the year-overview table (i.e., pre-2022 elections).
+   * Results are cached permanently since historical data never changes.
+   * Returns a map of propNumber → vote data.
+   */
+  async fetchVoteDataBatch(urlsByNumber: Map<string, string>): Promise<Map<string, PropVoteData>> {
+    const out = new Map<string, PropVoteData>();
+    const toFetch: Array<[string, string]> = [];
+
+    for (const [num, url] of Array.from(urlsByNumber)) {
+      const cached = this.voteDataCache.get(url);
+      if (cached) {
+        out.set(num, cached);
+      } else {
+        toFetch.push([num, url]);
+      }
+    }
+
+    if (toFetch.length === 0) return out;
+
+    await Promise.all(
+      toFetch.map(async ([num, url]) => {
+        try {
+          const details = await this.fetchPropositionSummary(url);
+          if (details.yesPercentage) {
+            const vd: PropVoteData = {
+              yesPercentage: details.yesPercentage,
+              noPercentage: details.noPercentage ?? (100 - details.yesPercentage),
+              yesVotes: details.yesVotes ?? 0,
+              noVotes: details.noVotes ?? 0,
+            };
+            this.voteDataCache.set(url, vd);
+            out.set(num, vd);
+          }
+        } catch { /* non-critical */ }
+      })
+    );
+
+    return out;
   }
 
   /**

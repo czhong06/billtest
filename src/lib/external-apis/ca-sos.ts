@@ -484,6 +484,33 @@ class CASosClient {
       }
     }
 
+    // For props that are missing vote percentages (older years where the year-overview
+    // table only has pass/fail), fetch individual Ballotpedia pages in parallel.
+    // Results are cached permanently since historical vote data never changes.
+    const missingVoteData = allPropositions.filter(
+      p => p.status !== 'upcoming' && (!p.result || p.result.yesPercentage === 0) && bpData.urls.has(p.number)
+    );
+    if (missingVoteData.length > 0) {
+      const urlsByNumber = new Map(missingVoteData.map(p => [p.number, bpData.urls.get(p.number)!]));
+      const voteDataMap = await ballotpediaClient.fetchVoteDataBatch(urlsByNumber);
+      for (const prop of missingVoteData) {
+        const vd = voteDataMap.get(prop.number);
+        if (vd) {
+          prop.result = {
+            passed: vd.yesPercentage > 50,
+            yesPercentage: vd.yesPercentage,
+            noPercentage: vd.noPercentage,
+            yesVotes: vd.yesVotes,
+            noVotes: vd.noVotes,
+            totalVotes: vd.yesVotes + vd.noVotes,
+            turnout: 0,
+          };
+          prop.status = prop.result.passed ? 'passed' : 'failed';
+        }
+      }
+      console.log(`[CA-SOS] Enriched ${voteDataMap.size} props with vote data from individual Ballotpedia pages`);
+    }
+
     return allPropositions.sort((a, b) => parseInt(a.number) - parseInt(b.number));
   }
 
