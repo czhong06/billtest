@@ -54,6 +54,8 @@ export interface BallotpediaYearResults {
   descriptions: Map<string, string>;
   /** Subject/topic from the table's Subject column (e.g. "Taxes", "Education") */
   subjects: Map<string, string>;
+  /** Ballotpedia individual page URL for each prop (used to fetch full descriptions) */
+  urls: Map<string, string>;
 }
 
 /** An upcoming measure scraped from Ballotpedia that hasn't been voted on yet */
@@ -141,7 +143,7 @@ class BallotpediaClient {
 
       if (!response.ok) {
         console.log(`[Ballotpedia] Year page returned ${response.status} for ${year}`);
-        return { results: new Map(), statuses: new Map(), titles: new Map(), descriptions: new Map(), subjects: new Map() };
+        return { results: new Map(), statuses: new Map(), titles: new Map(), descriptions: new Map(), subjects: new Map(), urls: new Map() };
       }
 
       const html = await response.text();
@@ -155,7 +157,7 @@ class BallotpediaClient {
       return parsed;
     } catch (error) {
       console.error(`[Ballotpedia] Error fetching year results for ${year}:`, error);
-      return { results: new Map(), statuses: new Map(), titles: new Map(), descriptions: new Map(), subjects: new Map() };
+      return { results: new Map(), statuses: new Map(), titles: new Map(), descriptions: new Map(), subjects: new Map(), urls: new Map() };
     }
   }
 
@@ -343,6 +345,7 @@ class BallotpediaClient {
     const titles = new Map<string, string>();
     const descriptions = new Map<string, string>();
     const subjects = new Map<string, string>();
+    const urls = new Map<string, string>();
 
     const rowPattern = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
     let rowMatch;
@@ -378,11 +381,15 @@ class BallotpediaClient {
       );
       const effectiveTitleIdx = titleCellIdx >= 0 ? titleCellIdx : 1;
 
-      // Extract title from the <a> link inside the title cell
+      // Extract title and URL from the <a> link inside the title cell
       const titleCell = cells[effectiveTitleIdx] ?? rowHtml;
-      const titleLinkMatch = titleCell.match(/<a[^>]+href="[^"]*"[^>]*>([\s\S]*?)<\/a>/i);
+      const titleLinkMatch = titleCell.match(/<a[^>]+href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/i);
       if (titleLinkMatch) {
-        const rawTitle = decodeHtmlEntities(titleLinkMatch[1].replace(/<[^>]+>/g, '')).trim();
+        const href = titleLinkMatch[1].startsWith('http')
+          ? titleLinkMatch[1]
+          : `${this.baseUrl}${titleLinkMatch[1]}`;
+        urls.set(propNumber, href);
+        const rawTitle = decodeHtmlEntities(titleLinkMatch[2].replace(/<[^>]+>/g, '')).trim();
         if (rawTitle.length > 5) titles.set(propNumber, rawTitle);
       }
 
@@ -444,7 +451,57 @@ class BallotpediaClient {
       }
     }
 
-    return { results, statuses, titles, descriptions, subjects };
+    return { results, statuses, titles, descriptions, subjects, urls };
+  }
+
+  /**
+   * Fetch the official ballot title / description from an individual Ballotpedia proposition page.
+   * Returns an empty string if nothing useful is found.
+   */
+  async fetchPropositionSummary(url: string): Promise<string> {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
+      const response = await fetch(url, {
+        headers: {
+          'Accept': 'text/html',
+          'User-Agent': 'Mozilla/5.0 (compatible; CA-Proposition-Predictor/1.0)',
+        },
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      if (!response.ok) return '';
+
+      const html = await response.text();
+
+      // 1. Try the ballot title from the infobox table (most reliable)
+      const ballotTitleMatch = html.match(
+        /(?:Ballot\s+title|Official\s+title)[^<]*<\/th>\s*<td[^>]*>([\s\S]*?)<\/td>/i
+      );
+      if (ballotTitleMatch) {
+        const text = decodeHtmlEntities(ballotTitleMatch[1].replace(/<[^>]+>/g, ''))
+          .replace(/\s+/g, ' ').trim();
+        if (text.length > 20) return text;
+      }
+
+      // 2. Try the first <p> in the mw-parser-output section (Wikipedia-style intro)
+      const contentMatch = html.match(/<div[^>]*class="[^"]*mw-parser-output[^"]*"[^>]*>([\s\S]*)/i);
+      const searchHtml = contentMatch ? contentMatch[1] : html;
+      const paraPattern = /<p[^>]*>([\s\S]*?)<\/p>/gi;
+      let paraMatch;
+      while ((paraMatch = paraPattern.exec(searchHtml)) !== null) {
+        const text = decodeHtmlEntities(paraMatch[1].replace(/<[^>]+>/g, ''))
+          .replace(/\s+/g, ' ').trim();
+        // Skip short paras, nav boilerplate, and Ballotpedia meta-text
+        if (text.length < 60) continue;
+        if (/ballotpedia|this article|click here|retrieved from/i.test(text)) continue;
+        return text.slice(0, 600);
+      }
+
+      return '';
+    } catch {
+      return '';
+    }
   }
 
   /**

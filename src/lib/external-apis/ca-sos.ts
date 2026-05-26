@@ -385,7 +385,7 @@ class CASosClient {
     const electionDates = this.generateElectionDates(year);
 
     // Fetch election results (CA SOS API + Ballotpedia) and Quick Guide pages in parallel
-    const emptyBpResults = { results: new Map<string, PropositionResult>(), statuses: new Map<string, boolean>(), titles: new Map<string, string>(), descriptions: new Map<string, string>(), subjects: new Map<string, string>() };
+    const emptyBpResults = { results: new Map<string, PropositionResult>(), statuses: new Map<string, boolean>(), titles: new Map<string, string>(), descriptions: new Map<string, string>(), subjects: new Map<string, string>(), urls: new Map<string, string>() };
     const [apiResults, bpData, ...htmlResults] = await Promise.all([
       this.fetchElectionResults().catch(() => new Map<string, ApiElectionResult>()),
       ballotpediaClient.fetchYearResults(year).catch(() => emptyBpResults),
@@ -679,17 +679,31 @@ class CASosClient {
     const prop = propositions.find(p => p.number === number);
     if (!prop) return null;
 
-    // Enrich with detail page data from Quick Guide
+    // Enrich with detail page data from Quick Guide (SPA pages often return nothing)
     const detail = await this.fetchPropositionDetail(prop.electionDate, number);
     if (detail) {
       if (detail.summary && detail.summary.length > prop.summary.length) {
         prop.summary = detail.summary;
       }
-      if (detail.supporters?.length) {
-        prop.sponsors = detail.supporters;
-      }
-      if (detail.opponents?.length) {
-        prop.opponents = detail.opponents;
+      if (detail.supporters?.length) prop.sponsors = detail.supporters;
+      if (detail.opponents?.length) prop.opponents = detail.opponents;
+    }
+
+    // If the summary is still thin (just the title or shorter), fetch the Ballotpedia
+    // individual page. fetchYearResults is cached so at most one extra HTTP request.
+    const summaryIsThin =
+      !prop.summary ||
+      prop.summary.trim().length < 60 ||
+      prop.summary.trim() === prop.title.trim();
+
+    if (summaryIsThin) {
+      const bpData = await ballotpediaClient.fetchYearResults(year).catch(() => null);
+      const bpUrl = bpData?.urls.get(number);
+      if (bpUrl) {
+        const bpSummary = await ballotpediaClient.fetchPropositionSummary(bpUrl);
+        if (bpSummary && bpSummary.length > prop.summary.length) {
+          prop.summary = bpSummary;
+        }
       }
     }
 
