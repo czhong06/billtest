@@ -138,8 +138,6 @@ export default function PropositionDetailPage({ params }: PageProps) {
     failed:   'bg-slate-400 text-white',
   } as const;
 
-  const passProb = proposition.prediction?.passageProbability ?? null;
-
   return (
     <div className="animate-fade-in" style={{ background: 'rgb(250 250 248)' }}>
 
@@ -173,8 +171,13 @@ export default function PropositionDetailPage({ params }: PageProps) {
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {[
               { icon: Calendar,   label: 'Election Date', value: formatDate(proposition.electionDate), color: '' },
-              { icon: TrendingUp, label: 'Prediction',     value: passProb !== null ? `${Math.round(passProb * 100)}% to pass` : 'N/A',
-                color: passProb !== null ? (passProb >= 0.5 ? 'text-emerald-700' : 'text-rose-600') : '' },
+              { icon: TrendingUp, label: 'Yes Vote',
+                value: proposition.result?.yesPercentage
+                  ? `${proposition.result.yesPercentage.toFixed(1)}%`
+                  : 'N/A',
+                color: proposition.result?.yesPercentage
+                  ? (proposition.result.yesPercentage >= 50 ? 'text-emerald-700' : 'text-rose-600')
+                  : '' },
               { icon: DollarSign, label: 'Total Funding',  value: proposition.finance
                   ? formatCurrency(proposition.finance.totalSupport + proposition.finance.totalOpposition)
                   : 'N/A', color: '' },

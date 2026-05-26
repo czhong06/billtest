@@ -474,13 +474,17 @@ class BallotpediaClient {
 
       const html = await response.text();
 
+      const clean = (raw: string) =>
+        decodeHtmlEntities(raw.replace(/<[^>]+>/g, ''))
+          .replace(/\[\d+\]/g, '')   // strip citation markers like [1][2]
+          .replace(/\s+/g, ' ').trim();
+
       // 1. Try the ballot title from the infobox table (most reliable)
       const ballotTitleMatch = html.match(
         /(?:Ballot\s+title|Official\s+title)[^<]*<\/th>\s*<td[^>]*>([\s\S]*?)<\/td>/i
       );
       if (ballotTitleMatch) {
-        const text = decodeHtmlEntities(ballotTitleMatch[1].replace(/<[^>]+>/g, ''))
-          .replace(/\s+/g, ' ').trim();
+        const text = clean(ballotTitleMatch[1]);
         if (text.length > 20) return text;
       }
 
@@ -490,8 +494,7 @@ class BallotpediaClient {
       const paraPattern = /<p[^>]*>([\s\S]*?)<\/p>/gi;
       let paraMatch;
       while ((paraMatch = paraPattern.exec(searchHtml)) !== null) {
-        const text = decodeHtmlEntities(paraMatch[1].replace(/<[^>]+>/g, ''))
-          .replace(/\s+/g, ' ').trim();
+        const text = clean(paraMatch[1]);
         // Skip short paras, nav boilerplate, and Ballotpedia meta-text
         if (text.length < 60) continue;
         if (/ballotpedia|this article|click here|retrieved from/i.test(text)) continue;
