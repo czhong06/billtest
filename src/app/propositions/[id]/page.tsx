@@ -161,14 +161,13 @@ export default function PropositionDetailPage({ params }: PageProps) {
             style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
             Proposition {proposition.number}: {proposition.title}
           </h1>
-          <p className="text-lg text-slate-600 max-w-4xl font-serif leading-relaxed">{proposition.summary}</p>
         </div>
       </section>
 
       {/* Quick stats */}
       <section className="py-5 bg-white border-b border-slate-200">
         <div className="container mx-auto px-4">
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div className={`grid gap-4 ${proposition.finance ? 'grid-cols-2 md:grid-cols-3' : 'grid-cols-1 md:grid-cols-2'}`}>
             {[
               { icon: Calendar,   label: 'Election Date', value: formatDate(proposition.electionDate), color: '' },
               { icon: TrendingUp, label: 'Yes Vote',
@@ -178,9 +177,11 @@ export default function PropositionDetailPage({ params }: PageProps) {
                 color: proposition.result?.yesPercentage
                   ? (proposition.result.yesPercentage >= 50 ? 'text-emerald-700' : 'text-rose-600')
                   : '' },
-              { icon: DollarSign, label: 'Total Funding',  value: proposition.finance
-                  ? formatCurrency(proposition.finance.totalSupport + proposition.finance.totalOpposition)
-                  : 'N/A', color: '' },
+              ...(proposition.finance ? [{
+                icon: DollarSign, label: 'Total Funding',
+                value: formatCurrency(proposition.finance.totalSupport + proposition.finance.totalOpposition),
+                color: '',
+              }] : []),
             ].map(({ icon: Icon, label, value, color }) => (
               <div key={label} className="bg-slate-50 border border-slate-200 p-4 flex items-center gap-3">
                 <Icon className="h-5 w-5 text-slate-400 shrink-0" />
