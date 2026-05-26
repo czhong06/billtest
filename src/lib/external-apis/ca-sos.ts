@@ -453,6 +453,7 @@ class CASosClient {
           summary: description || title,
           status: result.passed ? 'passed' : 'failed',
           category: this.inferCategoryFromSubjects([subject]) || this.inferCategory(title),
+          subject: subject || undefined,
           result,
         });
       });
@@ -473,8 +474,7 @@ class CASosClient {
           summary: description || title,
           status: passed ? 'passed' : 'failed',
           category: this.inferCategoryFromSubjects([subject]) || this.inferCategory(title),
-          // Vote percentages unavailable for older years; result is set so prediction
-          // service can use the pass/fail outcome for historical comparison.
+          subject: subject || undefined,
           result: { passed, yesVotes: 0, noVotes: 0, yesPercentage: 0, noPercentage: 0, totalVotes: 0, turnout: 0 },
         });
       });

@@ -65,6 +65,11 @@ export function PropositionCard({
               >
                 Proposition {proposition.number}
               </h3>
+              {proposition.subject && (
+                <p className="text-gray-400 mt-1 text-xs font-serif italic">
+                  {proposition.subject}
+                </p>
+              )}
             </div>
             <span
               className="text-5xl font-black text-gray-100 shrink-0 leading-none"
