@@ -31,11 +31,14 @@ interface SimilarProp {
 function getSummaryText(proposition: PropositionWithDetails): string {
   const candidates = [proposition.fullText, proposition.summary].filter(Boolean) as string[];
   for (const text of candidates) {
-    const trimmed = text.trim();
+    let trimmed = text.trim();
     if (trimmed.length < 30) continue;
     if (/^\$?[\d,]+\.?\d*$/.test(trimmed)) continue;
     if (/^\$[\d,]+/.test(trimmed) && trimmed.length < 60) continue;
-    if (/was on the ballot|is on the ballot/i.test(trimmed)) continue;
+    // Strip the "was/is on the ballot" boilerplate sentence rather than discarding the whole text
+    const boilerplateIdx = trimmed.search(/\b(?:was|is) on the ballot\b/i);
+    if (boilerplateIdx !== -1) trimmed = trimmed.slice(0, boilerplateIdx).trim();
+    if (trimmed.length < 30) continue;
     return trimmed;
   }
   const categoryLabel = proposition.category.replace(/_/g, ' ');

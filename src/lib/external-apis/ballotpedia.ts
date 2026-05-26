@@ -98,9 +98,14 @@ function decodeHtmlEntities(text: string): string {
  * stopping before "Fiscal Impact", "Supporters", or "Opponents" sections.
  */
 function extractDescription(rawText: string): string {
-  const cutoff = rawText.search(/\b(?:Fiscal Impact|Supporters|Opponents)\s*:/i);
-  const trimmed = cutoff !== -1 ? rawText.slice(0, cutoff) : rawText;
-  return trimmed.replace(/\s+/g, ' ').trim();
+  let text = rawText;
+  // Cut at section markers
+  const sectionCut = text.search(/\b(?:Fiscal Impact|Supporters|Opponents)\s*:/i);
+  if (sectionCut !== -1) text = text.slice(0, sectionCut);
+  // Cut at Ballotpedia "was/is on the ballot" boilerplate
+  const boilerplateCut = text.search(/\b(?:was|is) on the ballot\b/i);
+  if (boilerplateCut !== -1) text = text.slice(0, boilerplateCut);
+  return text.replace(/\s+/g, ' ').trim();
 }
 
 class BallotpediaClient {
@@ -495,11 +500,16 @@ class BallotpediaClient {
       let paraMatch;
       while ((paraMatch = paraPattern.exec(searchHtml)) !== null) {
         const text = clean(paraMatch[1]);
-        // Skip short paras, nav boilerplate, Ballotpedia meta-text, and the
-        // Wikipedia-style "was on the ballot in California" intro sentence
-        if (text.length < 60) continue;
+        if (text.length < 30) continue;
         if (/ballotpedia|this article|click here|retrieved from/i.test(text)) continue;
-        if (/was on the ballot|is on the ballot/i.test(text)) continue;
+        // If the paragraph contains the "was/is on the ballot" boilerplate, salvage
+        // any useful text that appears before it rather than skipping the whole thing
+        const boilerplateIdx = text.search(/\b(?:was|is) on the ballot\b/i);
+        if (boilerplateIdx !== -1) {
+          const before = text.slice(0, boilerplateIdx).replace(/\s+/g, ' ').trim();
+          if (before.length >= 30) return before.slice(0, 600);
+          continue;
+        }
         return text.slice(0, 600);
       }
 

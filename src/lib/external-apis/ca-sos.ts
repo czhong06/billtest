@@ -701,7 +701,7 @@ class CASosClient {
 
       // 1. Year-table description is already scraped and often has the real ballot text
       const tableDesc = bpData?.descriptions.get(number);
-      if (tableDesc && tableDesc.trim().length >= 60) {
+      if (tableDesc && tableDesc.trim().length >= 20) {
         prop.summary = tableDesc.trim();
       } else {
         // 2. Fall back to individual Ballotpedia page (skips boilerplate in the scraper)
