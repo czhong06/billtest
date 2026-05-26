@@ -170,13 +170,14 @@ export default function PropositionDetailPage({ params }: PageProps) {
       {/* Quick stats */}
       <section className="py-5 bg-white border-b border-slate-200">
         <div className="container mx-auto px-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {[
-              { icon: Calendar,   label: 'Election Date',     value: formatDate(proposition.electionDate), color: '' },
-              { icon: TrendingUp, label: 'Prediction',        value: passProb !== null ? `${Math.round(passProb * 100)}% to pass` : 'N/A',
+              { icon: Calendar,   label: 'Election Date', value: formatDate(proposition.electionDate), color: '' },
+              { icon: TrendingUp, label: 'Prediction',     value: passProb !== null ? `${Math.round(passProb * 100)}% to pass` : 'N/A',
                 color: passProb !== null ? (passProb >= 0.5 ? 'text-emerald-700' : 'text-rose-600') : '' },
-              { icon: DollarSign, label: 'Support Raised',    value: proposition.finance ? formatCurrency(proposition.finance.totalSupport) : 'N/A', color: '' },
-              { icon: DollarSign, label: 'Opposition Raised', value: proposition.finance ? formatCurrency(proposition.finance.totalOpposition) : 'N/A', color: '' },
+              { icon: DollarSign, label: 'Total Funding',  value: proposition.finance
+                  ? formatCurrency(proposition.finance.totalSupport + proposition.finance.totalOpposition)
+                  : 'N/A', color: '' },
             ].map(({ icon: Icon, label, value, color }) => (
               <div key={label} className="bg-slate-50 border border-slate-200 p-4 flex items-center gap-3">
                 <Icon className="h-5 w-5 text-slate-400 shrink-0" />
@@ -261,48 +262,6 @@ export default function PropositionDetailPage({ params }: PageProps) {
                 </div>
 
                 <div className="space-y-6">
-                  <Card className="border border-slate-200">
-                    <CardHeader className="border-b border-slate-200">
-                      <CardTitle className="text-lg font-bold text-slate-900"
-                        style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>Sponsors</CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-4">
-                      {proposition.sponsors?.length ? (
-                        <ul className="space-y-2">
-                          {proposition.sponsors.map(s => (
-                            <li key={s} className="flex items-center gap-3 p-3 bg-emerald-50 border border-emerald-200">
-                              <div className="w-2 h-2 bg-emerald-700 rounded-full shrink-0" />
-                              <span className="text-sm font-serif text-slate-900">{s}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="text-sm text-slate-400 font-serif">No sponsor data available</p>
-                      )}
-                    </CardContent>
-                  </Card>
-
-                  <Card className="border border-slate-200">
-                    <CardHeader className="border-b border-slate-200">
-                      <CardTitle className="text-lg font-bold text-slate-900"
-                        style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>Opponents</CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-4">
-                      {proposition.opponents?.length ? (
-                        <ul className="space-y-2">
-                          {proposition.opponents.map(o => (
-                            <li key={o} className="flex items-center gap-3 p-3 bg-rose-50 border border-rose-200">
-                              <div className="w-2 h-2 bg-rose-500 rounded-full shrink-0" />
-                              <span className="text-sm font-serif text-slate-900">{o}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="text-sm text-slate-400 font-serif">No opponent data available</p>
-                      )}
-                    </CardContent>
-                  </Card>
-
                   <Card className="border border-slate-200">
                     <CardHeader className="border-b border-slate-200">
                       <CardTitle className="text-lg font-bold text-slate-900"
