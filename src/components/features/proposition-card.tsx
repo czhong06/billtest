@@ -65,9 +65,6 @@ export function PropositionCard({
               >
                 Proposition {proposition.number}
               </h3>
-              <p className="text-gray-700 mt-1 text-sm font-serif line-clamp-2 leading-relaxed">
-                {proposition.title}
-              </p>
             </div>
             <span
               className="text-5xl font-black text-gray-100 shrink-0 leading-none"
