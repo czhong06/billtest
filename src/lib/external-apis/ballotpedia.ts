@@ -105,11 +105,7 @@ function extractDescription(rawText: string): string {
   // Cut at Ballotpedia "was/is on the ballot" boilerplate
   const boilerplateCut = text.search(/\b(?:was|is) on the ballot\b/i);
   if (boilerplateCut !== -1) text = text.slice(0, boilerplateCut);
-  const cleaned = text.replace(/\s+/g, ' ').trim();
-  // Reject if what remains is just a reformatted title — the caller will fall back to fetching
-  // the individual Ballotpedia page for a real description
-  if (/^California Proposition \d+/i.test(cleaned)) return '';
-  return cleaned;
+  return text.replace(/\s+/g, ' ').trim();
 }
 
 export interface PropVoteData {
