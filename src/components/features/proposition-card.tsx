@@ -65,9 +65,9 @@ export function PropositionCard({
               >
                 Proposition {proposition.number}
               </h3>
-              {proposition.subject && (
+              {proposition.subject && !/^\$/.test(proposition.subject.trim()) && (
                 <p className="text-gray-400 mt-1 text-xs font-serif italic">
-                  {proposition.subject}
+                  {proposition.subject.split(';')[0].trim()}
                 </p>
               )}
             </div>

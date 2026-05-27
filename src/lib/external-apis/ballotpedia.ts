@@ -56,6 +56,8 @@ export interface BallotpediaYearResults {
   subjects: Map<string, string>;
   /** Ballotpedia individual page URL for each prop (used to fetch full descriptions) */
   urls: Map<string, string>;
+  /** Campaign finance totals from Ballotpedia's contributions table */
+  funding: Map<string, { total: number; support: number; opposition: number }>;
 }
 
 /** An upcoming measure scraped from Ballotpedia that hasn't been voted on yet */
@@ -158,7 +160,7 @@ class BallotpediaClient {
 
       if (!response.ok) {
         console.log(`[Ballotpedia] Year page returned ${response.status} for ${year}`);
-        return { results: new Map(), statuses: new Map(), titles: new Map(), descriptions: new Map(), subjects: new Map(), urls: new Map() };
+        return { results: new Map(), statuses: new Map(), titles: new Map(), descriptions: new Map(), subjects: new Map(), urls: new Map(), funding: new Map() };
       }
 
       const html = await response.text();
@@ -172,7 +174,7 @@ class BallotpediaClient {
       return parsed;
     } catch (error) {
       console.error(`[Ballotpedia] Error fetching year results for ${year}:`, error);
-      return { results: new Map(), statuses: new Map(), titles: new Map(), descriptions: new Map(), subjects: new Map(), urls: new Map() };
+      return { results: new Map(), statuses: new Map(), titles: new Map(), descriptions: new Map(), subjects: new Map(), urls: new Map(), funding: new Map() };
     }
   }
 
@@ -361,6 +363,7 @@ class BallotpediaClient {
     const descriptions = new Map<string, string>();
     const subjects = new Map<string, string>();
     const urls = new Map<string, string>();
+    const funding = new Map<string, { total: number; support: number; opposition: number }>();
 
     const rowPattern = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
     let rowMatch;
@@ -411,21 +414,39 @@ class BallotpediaClient {
       // Detect column layout:
       // Modern (7 cells, 2022+):  Type | Title | Subject | Description | Result | Yes | No
       // Older  (6 cells):         Type | Title | Description | Result | Yes | No
+      // Funding table (5 cells):  Title | Total | Support | Opposition | Outcome
       // The Subject column is short (< 80 chars); Description is longer.
+      // Dollar-amount cells (from the contributions table) must NOT be treated as subjects.
       if (effectiveTitleIdx + 1 < cells.length) {
         const nextCellText = decodeHtmlEntities(cells[effectiveTitleIdx + 1].replace(/<[^>]+>/g, '')).replace(/\s+/g, ' ').trim();
-        if (nextCellText.length > 0 && nextCellText.length <= 80) {
+        const isDollarCell = /^\$[\d,]/.test(nextCellText);
+
+        if (isDollarCell) {
+          // This is a row from the funding/contributions table — extract finance data.
+          // Columns: Title | Total | Support | Opposition | Outcome
+          const parseDollar = (raw: string) => {
+            const cleaned = raw.replace(/<[^>]+>/g, '').replace(/[$,\s]/g, '');
+            return parseFloat(cleaned) || 0;
+          };
+          const total = parseDollar(cells[effectiveTitleIdx + 1] ?? '');
+          const support = parseDollar(cells[effectiveTitleIdx + 2] ?? '');
+          const opposition = parseDollar(cells[effectiveTitleIdx + 3] ?? '');
+          if (total > 0) funding.set(propNumber, { total, support, opposition });
+          // Skip the result/status processing for funding table rows
+          continue;
+        } else if (nextCellText.length > 0 && nextCellText.length <= 80) {
           // Format A — cells[eff+1] is Subject, cells[eff+2] is Description
-          subjects.set(propNumber, nextCellText);
+          // First-write wins: don't override a subject already set from the results table
+          if (!subjects.has(propNumber)) subjects.set(propNumber, nextCellText);
           if (effectiveTitleIdx + 2 < cells.length) {
             const rawDesc = decodeHtmlEntities(cells[effectiveTitleIdx + 2].replace(/<[^>]+>/g, ''));
             const desc = extractDescription(rawDesc);
-            if (desc.length > 10) descriptions.set(propNumber, desc);
+            if (desc.length > 10 && !descriptions.has(propNumber)) descriptions.set(propNumber, desc);
           }
         } else if (nextCellText.length > 80) {
           // Format B — cells[eff+1] IS the Description (no Subject column)
           const desc = extractDescription(nextCellText);
-          if (desc.length > 10) descriptions.set(propNumber, desc);
+          if (desc.length > 10 && !descriptions.has(propNumber)) descriptions.set(propNumber, desc);
         }
       }
 
@@ -466,7 +487,7 @@ class BallotpediaClient {
       }
     }
 
-    return { results, statuses, titles, descriptions, subjects, urls };
+    return { results, statuses, titles, descriptions, subjects, urls, funding };
   }
 
   /**
