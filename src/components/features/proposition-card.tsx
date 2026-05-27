@@ -67,7 +67,7 @@ export function PropositionCard({
               </h3>
               {proposition.subject && !/^\$/.test(proposition.subject.trim()) && (
                 <p className="text-gray-400 mt-1 text-xs font-serif italic">
-                  {proposition.subject.split(';')[0].trim()}
+                  {proposition.subject.split(';').slice(0, 3).map(s => s.trim()).filter(Boolean).join(' · ')}
                 </p>
               )}
             </div>
