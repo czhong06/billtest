@@ -620,7 +620,7 @@ class BallotpediaClient {
         if (text.length > 20) return { summary: text, yesPercentage, noPercentage, yesVotes, noVotes };
       }
 
-      // 2. Try the first <p> in the mw-parser-output section (Wikipedia-style intro)
+      // 2. Try paragraphs in the mw-parser-output section (Wikipedia-style intro)
       const contentMatch = html.match(/<div[^>]*class="[^"]*mw-parser-output[^"]*"[^>]*>([\s\S]*)/i);
       const searchHtml = contentMatch ? contentMatch[1] : html;
       const paraPattern = /<p[^>]*>([\s\S]*?)<\/p>/gi;
@@ -629,16 +629,43 @@ class BallotpediaClient {
         const text = clean(paraMatch[1]);
         if (text.length < 30) continue;
         if (/ballotpedia|this article|click here|retrieved from/i.test(text)) continue;
-        const boilerplateIdx = text.search(/\b(?:was|is) on the ballot\b/i);
+        // Reject CSS/code blobs
+        if (/[{}]|\/\*|\*\/|\.[a-z-]+\s*\{/i.test(text)) continue;
+
+        // Cut at "was/is on the [optional word] ballot" boilerplate
+        // Matches: "was on the ballot", "was on the November ballot", "is on the 2024 ballot", etc.
+        const boilerplateIdx = text.search(/\b(?:was|is) on the (?:\S+ )?ballot\b/i);
         if (boilerplateIdx !== -1) {
           const before = text.slice(0, boilerplateIdx).replace(/\s+/g, ' ').trim();
-          if (before.length >= 30 && !/^California Proposition \d+/i.test(before)) {
-            return { summary: before.slice(0, 600), yesPercentage, noPercentage, yesVotes, noVotes };
+          // Strip "California Proposition N, [title] (YEAR)," from before if present
+          const stripped = before.replace(/^California Proposition\s+\d+[^.]*,\s*/i, '').trim();
+          if (stripped.length >= 30) {
+            return { summary: stripped.slice(0, 600), yesPercentage, noPercentage, yesVotes, noVotes };
           }
           continue;
         }
-        if (/^California Proposition \d+/i.test(text)) continue;
+
+        if (/^California Proposition \d+/i.test(text)) {
+          // Strip the opening "California Proposition N, [title] (YEAR), was a [type] measure..." sentence
+          // and use whatever substantive content follows it
+          const stripped = text.replace(/^California Proposition\s+\d+[^.]*\.\s*/i, '').trim();
+          if (stripped.length >= 40) {
+            return { summary: stripped.slice(0, 600), yesPercentage, noPercentage, yesVotes, noVotes };
+          }
+          continue;
+        }
+
         return { summary: text.slice(0, 600), yesPercentage, noPercentage, yesVotes, noVotes };
+      }
+
+      // 3. Look for "What would Proposition N do?" / "Background" section content
+      const sectionPattern = /(?:what would|background|overview)[^<]{0,60}<\/h[23]>\s*(?:<[^>]+>)*\s*<p[^>]*>([\s\S]*?)<\/p>/i;
+      const sectionMatch = html.match(sectionPattern);
+      if (sectionMatch) {
+        const text = clean(sectionMatch[1]);
+        if (text.length >= 40 && !/[{}]|\/\*/.test(text)) {
+          return { summary: text.slice(0, 600), yesPercentage, noPercentage, yesVotes, noVotes };
+        }
       }
 
       return { summary: '', yesPercentage, noPercentage, yesVotes, noVotes };
