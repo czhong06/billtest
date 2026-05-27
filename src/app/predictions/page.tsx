@@ -307,7 +307,7 @@ export default function PredictionsPage() {
                   <CardHeader className="border-b border-slate-200">
                     <CardTitle className="text-lg font-bold text-slate-900"
                       style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
-                      Top 5 Highest Supporting Finance (2002–2025)
+                      Top 5 Highest Supporters Finance (2002–2025)
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="pt-4">
@@ -316,7 +316,7 @@ export default function PredictionsPage() {
                         <tr className="border-b border-slate-200">
                           <th className="text-left py-2 text-slate-500 font-semibold uppercase tracking-widest text-xs">Year</th>
                           <th className="text-left py-2 text-slate-500 font-semibold uppercase tracking-widest text-xs">Prop Number</th>
-                          <th className="text-right py-2 text-slate-500 font-semibold uppercase tracking-widest text-xs">Supporting ($)</th>
+                          <th className="text-right py-2 text-slate-500 font-semibold uppercase tracking-widest text-xs">Supporters ($)</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
