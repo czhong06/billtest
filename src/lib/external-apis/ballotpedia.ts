@@ -107,7 +107,12 @@ function extractDescription(rawText: string): string {
   // Cut at Ballotpedia "was/is on the ballot" boilerplate
   const boilerplateCut = text.search(/\b(?:was|is) on the ballot\b/i);
   if (boilerplateCut !== -1) text = text.slice(0, boilerplateCut);
-  return text.replace(/\s+/g, ' ').trim();
+  const cleaned = text.replace(/\s+/g, ' ').trim();
+  // Reject CSS/code blobs: presence of { } blocks, /* */ comments, or CSS selectors
+  if (/[{}]|\/\*|\*\/|\.[a-z-]+\s*\{|:\s*[a-z-]+;/i.test(cleaned)) return '';
+  // Reject anything that looks like a dollar amount alone
+  if (/^\$[\d,]+/.test(cleaned) && cleaned.length < 60) return '';
+  return cleaned;
 }
 
 export interface PropVoteData {

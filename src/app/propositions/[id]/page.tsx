@@ -35,6 +35,8 @@ function getSummaryText(proposition: PropositionWithDetails): string {
     if (trimmed.length < 30) continue;
     if (/^\$?[\d,]+\.?\d*$/.test(trimmed)) continue;
     if (/^\$[\d,]+/.test(trimmed) && trimmed.length < 60) continue;
+    // Reject CSS or code blobs
+    if (/[{}]|\/\*|\*\/|\.[a-z-]+\s*\{/i.test(trimmed)) continue;
     // Strip the "was/is on the ballot" boilerplate
     const boilerplateIdx = trimmed.search(/\b(?:was|is) on the ballot\b/i);
     if (boilerplateIdx !== -1) trimmed = trimmed.slice(0, boilerplateIdx).trim();

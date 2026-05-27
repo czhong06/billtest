@@ -24,6 +24,7 @@ function getSubjectHint(proposition: Proposition): string | null {
   }
 
   // Fall back to the first 5 meaningful words of the title
+  // (also catches any subject that slipped through containing CSS)
   const hint = proposition.title
     .replace(/^(proposition\s+\d+\s*[:\-–—]?\s*)/i, '')
     .replace(/\s*\.\s*(initiative|statute|constitutional amendment|measure)\s*\.?\s*$/i, '')
