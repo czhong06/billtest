@@ -620,7 +620,17 @@ class BallotpediaClient {
         if (text.length > 20) return { summary: text, yesPercentage, noPercentage, yesVotes, noVotes };
       }
 
-      // 2. Try paragraphs in the mw-parser-output section (Wikipedia-style intro)
+      // 2. Look for the official "A 'yes' vote supported/supports..." ballot summary —
+      //    this is always the clearest description of what the measure does.
+      const yesVoteMatch = html.match(/A\s+.{0,5}yes.{0,5}\s+vote\s+(?:supported?|supports?)\s+([\s\S]*?)(?=A\s+.{0,5}no.{0,5}\s+vote|<\/p>|<h[23])/i);
+      if (yesVoteMatch) {
+        const text = clean('A "yes" vote supported ' + yesVoteMatch[1]);
+        if (text.length >= 30 && !/[{}]|\/\*/.test(text)) {
+          return { summary: text.slice(0, 600), yesPercentage, noPercentage, yesVotes, noVotes };
+        }
+      }
+
+      // 3. Try paragraphs in the mw-parser-output section (Wikipedia-style intro)
       const contentMatch = html.match(/<div[^>]*class="[^"]*mw-parser-output[^"]*"[^>]*>([\s\S]*)/i);
       const searchHtml = contentMatch ? contentMatch[1] : html;
       const paraPattern = /<p[^>]*>([\s\S]*?)<\/p>/gi;
@@ -631,6 +641,8 @@ class BallotpediaClient {
         if (/ballotpedia|this article|click here|retrieved from/i.test(text)) continue;
         // Reject CSS/code blobs
         if (/[{}]|\/\*|\*\/|\.[a-z-]+\s*\{/i.test(text)) continue;
+        // Skip date-stamped news/update paragraphs ("On January 14, 2026, ..." / "As of ...")
+        if (/^(?:On [A-Z][a-z]+ \d|As of [A-Z])/i.test(text)) continue;
 
         // Cut at "was/is on the [optional word] ballot" boilerplate
         // Matches: "was on the ballot", "was on the November ballot", "is on the 2024 ballot", etc.
@@ -658,7 +670,7 @@ class BallotpediaClient {
         return { summary: text.slice(0, 600), yesPercentage, noPercentage, yesVotes, noVotes };
       }
 
-      // 3. Look for "What would Proposition N do?" / "Background" section content
+      // 4. Look for "What would Proposition N do?" / "Background" section content
       const sectionPattern = /(?:what would|background|overview)[^<]{0,60}<\/h[23]>\s*(?:<[^>]+>)*\s*<p[^>]*>([\s\S]*?)<\/p>/i;
       const sectionMatch = html.match(sectionPattern);
       if (sectionMatch) {
