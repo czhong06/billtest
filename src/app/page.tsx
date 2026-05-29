@@ -6,18 +6,18 @@ import {
 
 const features = [
   {
-    title: 'Probability Predictions',
-    kicker: 'Who Wins?',
-    description: 'Our model crunches historical data, campaign cash, and voter demographics to give you a real shot at knowing what passes — before Election Day.',
+    title: 'Every Proposition, Every Vote',
+    kicker: 'Historical Database',
+    description: 'Search and browse every California statewide ballot measure going back decades — with official yes/no vote totals, pass/fail results, and full descriptions sourced from Ballotpedia and the CA Secretary of State.',
     icon: BarChart3,
-    href: '/predictions',
+    href: '/propositions',
     accent: 'border-t-4 border-indigo-500',
   },
   {
-    title: 'Campaign Finance Analysis',
-    kicker: 'Follow the Money',
-    description: `Track real-time contributions and spending from Cal-Access. See who's backing each proposition — and how much they're spending to win your vote.`,
-    icon: DollarSign,
+    title: 'Interactive County Map',
+    kicker: 'See How Your County Voted',
+    description: 'Explore a county-by-county breakdown of the vote for any California ballot proposition. All 58 counties, color-coded by yes percentage — from the coast to the Central Valley.',
+    icon: Map,
     href: '/propositions',
     accent: 'border-t-4 border-slate-700',
   },
@@ -30,10 +30,10 @@ const dataSources = [
 ];
 
 const stats = [
-  { label: 'Data Sources', value: '4+', icon: BarChart3 },
-  { label: 'Live Finance', value: 'Real-Time', icon: TrendingUp },
+  { label: 'Propositions', value: '200+', icon: BarChart3 },
   { label: 'CA Counties', value: '58', icon: Map },
-  { label: 'Years of History', value: '10+', icon: Flame },
+  { label: 'Years of History', value: '30+', icon: Flame },
+  { label: 'Data Sources', value: '3', icon: TrendingUp },
 ];
 
 export default function HomePage() {
@@ -59,9 +59,10 @@ export default function HomePage() {
                   Voters Decide?
                 </h1>
                 <p className="text-lg text-gray-700 leading-relaxed mb-6 font-serif">
-                  Data-driven predictions for every statewide ballot measure — powered by real
-                  campaign finance records, a decade of historical results, and a prediction
-                  engine that refuses to guess.
+                  A complete record of every California statewide ballot proposition — with
+                  official vote results, county-by-county breakdowns on an interactive map,
+                  and measure descriptions sourced directly from the CA Secretary of State
+                  and Ballotpedia.
                 </p>
                 <Link href="/propositions">
                   <Button size="lg" className="bg-slate-700 text-white hover:bg-slate-800 px-7 py-5 text-base font-semibold rounded-none">
@@ -124,27 +125,27 @@ export default function HomePage() {
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8">
             <div>
-              <p className="kicker mb-2">Live Tracking</p>
+              <p className="kicker mb-2">Explore the Archive</p>
               <h2 className="text-3xl font-black text-gray-900 leading-tight"
                 style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
-                2026 Ballot Measures
-                <span className="italic text-indigo-500"> — updated as data arrives</span>
+                30+ Years of California Ballot History
+                <span className="italic text-indigo-500"> — all in one place</span>
               </h2>
               <p className="text-gray-600 mt-3 max-w-xl font-serif text-sm leading-relaxed">
-                Predictions for upcoming California propositions based on live campaign finance
-                records from Cal-Access and historical election results from Ballotpedia.
-                No guesswork. No fabricated numbers.
+                Official vote results from the CA Secretary of State. County-level maps
+                for every proposition. Measure descriptions from Ballotpedia.
+                All sourced directly — no fabricated numbers.
               </p>
             </div>
             <div className="flex flex-col gap-3 shrink-0">
-              <Link href="/predictions">
+              <Link href="/propositions">
                 <Button size="lg" className="w-full bg-slate-700 text-white hover:bg-slate-800 px-8 py-5 text-sm font-semibold rounded-none uppercase tracking-wider">
-                  Predictions Dashboard <ArrowRight className="ml-2 h-4 w-4" />
+                  Browse All Propositions <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
-              <Link href="/propositions">
+              <Link href="/propositions#map">
                 <Button size="lg" variant="outline" className="w-full border-2 border-slate-700 text-slate-700 hover:bg-slate-700 hover:text-white px-8 py-5 text-sm font-semibold rounded-none uppercase tracking-wider">
-                  Browse All Propositions <ArrowRight className="ml-2 h-4 w-4" />
+                  View County Map <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
             </div>
@@ -186,17 +187,12 @@ export default function HomePage() {
             <span className="italic text-indigo-400">Voters Are Informed.</span>
           </h2>
           <p className="text-slate-400 mb-10 max-w-xl mx-auto font-serif text-sm leading-relaxed">
-            Dive into detailed analysis and understand how ballot measures might reshape California's legislative landscape.
+            Search every California ballot proposition, read the official description, see how it did statewide and in every county.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/propositions">
               <Button size="lg" className="bg-white text-gray-900 hover:bg-gray-100 px-8 py-5 text-sm font-semibold rounded-none uppercase tracking-wider">
-                Get Started <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-            <Link href="/predictions">
-              <Button size="lg" className="bg-indigo-600 text-white hover:bg-indigo-700 px-8 py-5 text-sm font-semibold rounded-none uppercase tracking-wider">
-                View Predictions
+                Browse Propositions <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
           </div>

@@ -13,6 +13,7 @@ export interface Proposition {
   status: PropositionStatus;
   result?: PropositionResult;
   category: PropositionCategory;
+  subject?: string;
   sponsors?: string[];
   opponents?: string[];
 }

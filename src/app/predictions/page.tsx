@@ -311,6 +311,9 @@ export default function PredictionsPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="pt-4">
+                    <p className="text-xs text-slate-400 font-serif mb-4">
+                      Dollars raised by pro-passage committees only — does not include opposition spending. Individual proposition pages show total contributions from both sides.
+                    </p>
                     <table className="w-full text-sm font-serif">
                       <thead>
                         <tr className="border-b border-slate-200">

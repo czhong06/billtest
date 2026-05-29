@@ -54,6 +54,10 @@ export interface BallotpediaYearResults {
   descriptions: Map<string, string>;
   /** Subject/topic from the table's Subject column (e.g. "Taxes", "Education") */
   subjects: Map<string, string>;
+  /** Ballotpedia individual page URL for each prop (used to fetch full descriptions) */
+  urls: Map<string, string>;
+  /** Campaign finance totals from Ballotpedia's contributions table */
+  funding: Map<string, { total: number; support: number; opposition: number }>;
 }
 
 /** An upcoming measure scraped from Ballotpedia that hasn't been voted on yet */
@@ -96,15 +100,35 @@ function decodeHtmlEntities(text: string): string {
  * stopping before "Fiscal Impact", "Supporters", or "Opponents" sections.
  */
 function extractDescription(rawText: string): string {
-  const cutoff = rawText.search(/\b(?:Fiscal Impact|Supporters|Opponents)\s*:/i);
-  const trimmed = cutoff !== -1 ? rawText.slice(0, cutoff) : rawText;
-  return trimmed.replace(/\s+/g, ' ').trim();
+  let text = rawText;
+  // Cut at section markers
+  const sectionCut = text.search(/\b(?:Fiscal Impact|Supporters|Opponents)\s*:/i);
+  if (sectionCut !== -1) text = text.slice(0, sectionCut);
+  // Cut at Ballotpedia "was/is on the ballot" boilerplate
+  const boilerplateCut = text.search(/\b(?:was|is) on the ballot\b/i);
+  if (boilerplateCut !== -1) text = text.slice(0, boilerplateCut);
+  const cleaned = text.replace(/\s+/g, ' ').trim();
+  // Reject CSS/code blobs: presence of { } blocks, /* */ comments, or CSS selectors
+  if (/[{}]|\/\*|\*\/|\.[a-z-]+\s*\{|:\s*[a-z-]+;/i.test(cleaned)) return '';
+  // Reject anything that looks like a dollar amount alone
+  if (/^\$[\d,]+/.test(cleaned) && cleaned.length < 60) return '';
+  return cleaned;
+}
+
+export interface PropVoteData {
+  yesPercentage: number;
+  noPercentage: number;
+  yesVotes: number;
+  noVotes: number;
+  summary?: string;
 }
 
 class BallotpediaClient {
   private baseUrl: string;
   private resultsCache: Map<number, { data: BallotpediaYearResults; fetchedAt: number }> = new Map();
   private upcomingCache: Map<number, BallotpediaUpcomingMeasure[]> = new Map();
+  // Cache for individual page vote data — historical data never changes so no TTL
+  private voteDataCache: Map<string, PropVoteData> = new Map();
   private static CACHE_TTL = 3_600_000; // 1 hour
 
   constructor() {
@@ -141,7 +165,7 @@ class BallotpediaClient {
 
       if (!response.ok) {
         console.log(`[Ballotpedia] Year page returned ${response.status} for ${year}`);
-        return { results: new Map(), statuses: new Map(), titles: new Map(), descriptions: new Map(), subjects: new Map() };
+        return { results: new Map(), statuses: new Map(), titles: new Map(), descriptions: new Map(), subjects: new Map(), urls: new Map(), funding: new Map() };
       }
 
       const html = await response.text();
@@ -155,7 +179,7 @@ class BallotpediaClient {
       return parsed;
     } catch (error) {
       console.error(`[Ballotpedia] Error fetching year results for ${year}:`, error);
-      return { results: new Map(), statuses: new Map(), titles: new Map(), descriptions: new Map(), subjects: new Map() };
+      return { results: new Map(), statuses: new Map(), titles: new Map(), descriptions: new Map(), subjects: new Map(), urls: new Map(), funding: new Map() };
     }
   }
 
@@ -343,6 +367,8 @@ class BallotpediaClient {
     const titles = new Map<string, string>();
     const descriptions = new Map<string, string>();
     const subjects = new Map<string, string>();
+    const urls = new Map<string, string>();
+    const funding = new Map<string, { total: number; support: number; opposition: number }>();
 
     const rowPattern = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
     let rowMatch;
@@ -378,32 +404,54 @@ class BallotpediaClient {
       );
       const effectiveTitleIdx = titleCellIdx >= 0 ? titleCellIdx : 1;
 
-      // Extract title from the <a> link inside the title cell
+      // Extract title and URL from the <a> link inside the title cell
       const titleCell = cells[effectiveTitleIdx] ?? rowHtml;
-      const titleLinkMatch = titleCell.match(/<a[^>]+href="[^"]*"[^>]*>([\s\S]*?)<\/a>/i);
+      const titleLinkMatch = titleCell.match(/<a[^>]+href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/i);
       if (titleLinkMatch) {
-        const rawTitle = decodeHtmlEntities(titleLinkMatch[1].replace(/<[^>]+>/g, '')).trim();
+        const href = titleLinkMatch[1].startsWith('http')
+          ? titleLinkMatch[1]
+          : `${this.baseUrl}${titleLinkMatch[1]}`;
+        urls.set(propNumber, href);
+        const rawTitle = decodeHtmlEntities(titleLinkMatch[2].replace(/<[^>]+>/g, '')).trim();
         if (rawTitle.length > 5) titles.set(propNumber, rawTitle);
       }
 
       // Detect column layout:
       // Modern (7 cells, 2022+):  Type | Title | Subject | Description | Result | Yes | No
       // Older  (6 cells):         Type | Title | Description | Result | Yes | No
+      // Funding table (5 cells):  Title | Total | Support | Opposition | Outcome
       // The Subject column is short (< 80 chars); Description is longer.
+      // Dollar-amount cells (from the contributions table) must NOT be treated as subjects.
       if (effectiveTitleIdx + 1 < cells.length) {
         const nextCellText = decodeHtmlEntities(cells[effectiveTitleIdx + 1].replace(/<[^>]+>/g, '')).replace(/\s+/g, ' ').trim();
-        if (nextCellText.length > 0 && nextCellText.length <= 80) {
+        const isDollarCell = /^\$[\d,]/.test(nextCellText);
+
+        if (isDollarCell) {
+          // This is a row from the funding/contributions table — extract finance data.
+          // Columns: Title | Total | Support | Opposition | Outcome
+          const parseDollar = (raw: string) => {
+            const cleaned = raw.replace(/<[^>]+>/g, '').replace(/[$,\s]/g, '');
+            return parseFloat(cleaned) || 0;
+          };
+          const total = parseDollar(cells[effectiveTitleIdx + 1] ?? '');
+          const support = parseDollar(cells[effectiveTitleIdx + 2] ?? '');
+          const opposition = parseDollar(cells[effectiveTitleIdx + 3] ?? '');
+          if (total > 0) funding.set(propNumber, { total, support, opposition });
+          // Skip the result/status processing for funding table rows
+          continue;
+        } else if (nextCellText.length > 0 && nextCellText.length <= 80) {
           // Format A — cells[eff+1] is Subject, cells[eff+2] is Description
-          subjects.set(propNumber, nextCellText);
+          // First-write wins: don't override a subject already set from the results table
+          if (!subjects.has(propNumber)) subjects.set(propNumber, nextCellText);
           if (effectiveTitleIdx + 2 < cells.length) {
             const rawDesc = decodeHtmlEntities(cells[effectiveTitleIdx + 2].replace(/<[^>]+>/g, ''));
             const desc = extractDescription(rawDesc);
-            if (desc.length > 10) descriptions.set(propNumber, desc);
+            if (desc.length > 10 && !descriptions.has(propNumber)) descriptions.set(propNumber, desc);
           }
         } else if (nextCellText.length > 80) {
           // Format B — cells[eff+1] IS the Description (no Subject column)
           const desc = extractDescription(nextCellText);
-          if (desc.length > 10) descriptions.set(propNumber, desc);
+          if (desc.length > 10 && !descriptions.has(propNumber)) descriptions.set(propNumber, desc);
         }
       }
 
@@ -444,7 +492,198 @@ class BallotpediaClient {
       }
     }
 
-    return { results, statuses, titles, descriptions, subjects };
+    return { results, statuses, titles, descriptions, subjects, urls, funding };
+  }
+
+  /**
+   * Fetch vote percentages for a batch of propositions that have Ballotpedia URLs
+   * but no vote data from the year-overview table (i.e., pre-2022 elections).
+   * Results are cached permanently since historical data never changes.
+   * Returns a map of propNumber → vote data.
+   */
+  async fetchVoteDataBatch(urlsByNumber: Map<string, string>): Promise<Map<string, PropVoteData>> {
+    const out = new Map<string, PropVoteData>();
+    const toFetch: Array<[string, string]> = [];
+
+    for (const [num, url] of Array.from(urlsByNumber)) {
+      const cached = this.voteDataCache.get(url);
+      if (cached) {
+        out.set(num, cached);
+      } else {
+        toFetch.push([num, url]);
+      }
+    }
+
+    if (toFetch.length === 0) return out;
+
+    // Fetch in batches of 4 to avoid triggering Ballotpedia rate limiting
+    const CONCURRENCY = 4;
+    for (let i = 0; i < toFetch.length; i += CONCURRENCY) {
+      const batch = toFetch.slice(i, i + CONCURRENCY);
+      await Promise.all(batch.map(async ([num, url]) => {
+        try {
+          const details = await this.fetchPropositionSummary(url);
+          // Only cache if we got real vote data — don't poison the cache with empty results
+          // so a timeout or Ballotpedia block doesn't permanently zero out a prop's votes
+          if (details.yesPercentage) {
+            const vd: PropVoteData = {
+              yesPercentage: details.yesPercentage,
+              noPercentage: details.noPercentage ?? (100 - details.yesPercentage),
+              yesVotes: details.yesVotes ?? 0,
+              noVotes: details.noVotes ?? 0,
+              summary: details.summary || undefined,
+            };
+            this.voteDataCache.set(url, vd);
+            out.set(num, vd);
+          } else if (details.summary) {
+            // Got a description but no vote data — cache summary only
+            const vd: PropVoteData = {
+              yesPercentage: 0,
+              noPercentage: 0,
+              yesVotes: 0,
+              noVotes: 0,
+              summary: details.summary,
+            };
+            this.voteDataCache.set(url, vd);
+            out.set(num, vd);
+          }
+        } catch { /* non-critical */ }
+      }));
+    }
+
+    return out;
+  }
+
+  /**
+   * Fetch the official ballot title/description AND vote percentages from an individual
+   * Ballotpedia proposition page. Vote data is extracted from the Election results section
+   * which exists on all years, making this reliable for pre-2022 elections too.
+   */
+  async fetchPropositionSummary(url: string): Promise<{
+    summary: string;
+    yesPercentage?: number;
+    noPercentage?: number;
+    yesVotes?: number;
+    noVotes?: number;
+  }> {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
+      const response = await fetch(url, {
+        headers: {
+          'Accept': 'text/html',
+          'User-Agent': 'Mozilla/5.0 (compatible; CA-Proposition-Predictor/1.0)',
+        },
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      if (!response.ok) return { summary: '' };
+
+      const html = await response.text();
+
+      const clean = (raw: string) =>
+        decodeHtmlEntities(raw.replace(/<[^>]+>/g, ''))
+          .replace(/\[\d+\]/g, '')   // strip citation markers like [1][2]
+          .replace(/\s+/g, ' ').trim();
+
+      // ── Extract vote percentages ──
+      // Ballotpedia individual pages have an "Election results" section with a table:
+      //   Yes | 4,238,156 | 59.61%
+      //   No  | 2,871,943 | 40.39%
+      // This is reliable for all years, even pre-2022 where the year-overview table lacks counts.
+      let yesPercentage: number | undefined;
+      let noPercentage: number | undefined;
+      let yesVotes: number | undefined;
+      let noVotes: number | undefined;
+
+      const electionResultsIdx = html.search(/id="Election_results"/i);
+      if (electionResultsIdx !== -1) {
+        const resultsChunk = html.slice(electionResultsIdx, electionResultsIdx + 2000);
+        // Pattern: "Yes" followed by vote count, then percentage; same for "No"
+        const yesMatch = resultsChunk.match(/>\s*Yes\s*<[\s\S]*?>([\d,]+)<[\s\S]*?>([\d.]+)%/i);
+        const noMatch  = resultsChunk.match(/>\s*No\s*<[\s\S]*?>([\d,]+)<[\s\S]*?>([\d.]+)%/i);
+        if (yesMatch && noMatch) {
+          yesVotes = parseInt(yesMatch[1].replace(/,/g, ''));
+          yesPercentage = parseFloat(yesMatch[2]);
+          noVotes = parseInt(noMatch[1].replace(/,/g, ''));
+          noPercentage = parseFloat(noMatch[2]);
+        }
+      }
+
+      // ── Extract description ──
+      // 1. Try the ballot title from the infobox table (most reliable)
+      const ballotTitleMatch = html.match(
+        /(?:Ballot\s+title|Official\s+title)[^<]*<\/th>\s*<td[^>]*>([\s\S]*?)<\/td>/i
+      );
+      if (ballotTitleMatch) {
+        const text = clean(ballotTitleMatch[1]);
+        if (text.length > 20) return { summary: text, yesPercentage, noPercentage, yesVotes, noVotes };
+      }
+
+      // 2. Look for the official "A 'yes' vote supported/supports..." ballot summary —
+      //    this is always the clearest description of what the measure does.
+      const yesVoteMatch = html.match(/A\s+.{0,5}yes.{0,5}\s+vote\s+(?:supported?|supports?)\s+([\s\S]*?)(?=A\s+.{0,5}no.{0,5}\s+vote|<\/p>|<h[23])/i);
+      if (yesVoteMatch) {
+        const text = clean('A "yes" vote supported ' + yesVoteMatch[1]);
+        if (text.length >= 30 && !/[{}]|\/\*/.test(text)) {
+          return { summary: text.slice(0, 600), yesPercentage, noPercentage, yesVotes, noVotes };
+        }
+      }
+
+      // 3. Try paragraphs in the mw-parser-output section (Wikipedia-style intro)
+      const contentMatch = html.match(/<div[^>]*class="[^"]*mw-parser-output[^"]*"[^>]*>([\s\S]*)/i);
+      const searchHtml = contentMatch ? contentMatch[1] : html;
+      const paraPattern = /<p[^>]*>([\s\S]*?)<\/p>/gi;
+      let paraMatch;
+      while ((paraMatch = paraPattern.exec(searchHtml)) !== null) {
+        const text = clean(paraMatch[1]);
+        if (text.length < 30) continue;
+        if (/ballotpedia|this article|click here|retrieved from/i.test(text)) continue;
+        // Reject CSS/code blobs
+        if (/[{}]|\/\*|\*\/|\.[a-z-]+\s*\{/i.test(text)) continue;
+        // Skip date-stamped news/update paragraphs ("On January 14, 2026, ..." / "As of ...")
+        if (/^(?:On [A-Z][a-z]+ \d|As of [A-Z])/i.test(text)) continue;
+
+        // Cut at "was/is on the [optional word] ballot" boilerplate
+        // Matches: "was on the ballot", "was on the November ballot", "is on the 2024 ballot", etc.
+        const boilerplateIdx = text.search(/\b(?:was|is) on the (?:\S+ )?ballot\b/i);
+        if (boilerplateIdx !== -1) {
+          const before = text.slice(0, boilerplateIdx).replace(/\s+/g, ' ').trim();
+          // Strip "California Proposition N, [title] (YEAR)," from before if present
+          const stripped = before.replace(/^California Proposition\s+\d+[^.]*,\s*/i, '').trim();
+          if (stripped.length >= 30) {
+            return { summary: stripped.slice(0, 600), yesPercentage, noPercentage, yesVotes, noVotes };
+          }
+          continue;
+        }
+
+        if (/^California Proposition \d+/i.test(text)) {
+          // Strip the opening "California Proposition N, [title] (YEAR), was a [type] measure..." sentence
+          // and use whatever substantive content follows it
+          const stripped = text.replace(/^California Proposition\s+\d+[^.]*\.\s*/i, '').trim();
+          if (stripped.length >= 40) {
+            return { summary: stripped.slice(0, 600), yesPercentage, noPercentage, yesVotes, noVotes };
+          }
+          continue;
+        }
+
+        return { summary: text.slice(0, 600), yesPercentage, noPercentage, yesVotes, noVotes };
+      }
+
+      // 4. Look for "What would Proposition N do?" / "Background" section content
+      const sectionPattern = /(?:what would|background|overview)[^<]{0,60}<\/h[23]>\s*(?:<[^>]+>)*\s*<p[^>]*>([\s\S]*?)<\/p>/i;
+      const sectionMatch = html.match(sectionPattern);
+      if (sectionMatch) {
+        const text = clean(sectionMatch[1]);
+        if (text.length >= 40 && !/[{}]|\/\*/.test(text)) {
+          return { summary: text.slice(0, 600), yesPercentage, noPercentage, yesVotes, noVotes };
+        }
+      }
+
+      return { summary: '', yesPercentage, noPercentage, yesVotes, noVotes };
+    } catch {
+      return { summary: '' };
+    }
   }
 
   /**

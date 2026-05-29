@@ -12,6 +12,31 @@ interface PropositionCardProps {
   showPrediction?: boolean;
 }
 
+// Returns a short 4-6 word vibe hint for the card.
+// Prefers Ballotpedia subject tags; falls back to first words of the title.
+function getSubjectHint(proposition: Proposition): string | null {
+  if (proposition.subject && !/^\$/.test(proposition.subject.trim())) {
+    const tags = proposition.subject
+      .split(';')
+      .map(s => s.trim())
+      .filter(t => t.length > 0 && !/^(democrats?|republicans?|libertarians?|political parties?)$/i.test(t));
+    if (tags.length > 0) return tags.slice(0, 3).join(' · ');
+  }
+
+  // Fall back to the first 5 meaningful words of the title
+  // (also catches any subject that slipped through containing CSS)
+  const hint = proposition.title
+    .replace(/^(proposition\s+\d+\s*[:\-–—]?\s*)/i, '')
+    .replace(/\s*\.\s*(initiative|statute|constitutional amendment|measure)\s*\.?\s*$/i, '')
+    .trim()
+    .split(/\s+/)
+    .slice(0, 5)
+    .join(' ')
+    .replace(/[.,;:]+$/, '');
+
+  return hint.length > 3 ? hint : null;
+}
+
 export function PropositionCard({
   proposition,
   prediction,
@@ -65,14 +90,12 @@ export function PropositionCard({
               >
                 Proposition {proposition.number}
               </h3>
-              <p className="text-gray-700 mt-1 text-sm font-serif line-clamp-2 leading-relaxed">
-                {proposition.title}
-              </p>
-              {proposition.summary && proposition.summary !== proposition.title && proposition.status !== 'upcoming' && (
-                <p className="text-gray-500 mt-1 text-xs font-serif line-clamp-2 italic">
-                  {proposition.summary}
-                </p>
-              )}
+              {(() => {
+                const hint = getSubjectHint(proposition);
+                return hint ? (
+                  <p className="text-gray-400 mt-1 text-xs font-serif italic">{hint}</p>
+                ) : null;
+              })()}
             </div>
             <span
               className="text-5xl font-black text-gray-100 shrink-0 leading-none"

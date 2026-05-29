@@ -385,7 +385,7 @@ class CASosClient {
     const electionDates = this.generateElectionDates(year);
 
     // Fetch election results (CA SOS API + Ballotpedia) and Quick Guide pages in parallel
-    const emptyBpResults = { results: new Map<string, PropositionResult>(), statuses: new Map<string, boolean>(), titles: new Map<string, string>(), descriptions: new Map<string, string>(), subjects: new Map<string, string>() };
+    const emptyBpResults = { results: new Map<string, PropositionResult>(), statuses: new Map<string, boolean>(), titles: new Map<string, string>(), descriptions: new Map<string, string>(), subjects: new Map<string, string>(), urls: new Map<string, string>() };
     const [apiResults, bpData, ...htmlResults] = await Promise.all([
       this.fetchElectionResults().catch(() => new Map<string, ApiElectionResult>()),
       ballotpediaClient.fetchYearResults(year).catch(() => emptyBpResults),
@@ -453,6 +453,7 @@ class CASosClient {
           summary: description || title,
           status: result.passed ? 'passed' : 'failed',
           category: this.inferCategoryFromSubjects([subject]) || this.inferCategory(title),
+          subject: subject || undefined,
           result,
         });
       });
@@ -473,8 +474,7 @@ class CASosClient {
           summary: description || title,
           status: passed ? 'passed' : 'failed',
           category: this.inferCategoryFromSubjects([subject]) || this.inferCategory(title),
-          // Vote percentages unavailable for older years; result is set so prediction
-          // service can use the pass/fail outcome for historical comparison.
+          subject: subject || undefined,
           result: { passed, yesVotes: 0, noVotes: 0, yesPercentage: 0, noPercentage: 0, totalVotes: 0, turnout: 0 },
         });
       });
@@ -482,6 +482,42 @@ class CASosClient {
       if (allPropositions.length > 0) {
         console.log(`[CA-SOS] Built ${allPropositions.length} propositions from Ballotpedia results for ${year}`);
       }
+    }
+
+    // For props missing vote percentages (pre-2022 year-overview tables lack vote counts),
+    // fetch individual Ballotpedia pages in parallel. Also grab the description from the
+    // same fetch and use it when the existing summary is just the title or empty.
+    // Results are cached permanently since historical data never changes.
+    const missingVotes = allPropositions.filter(
+      p => p.status !== 'upcoming' &&
+           (!p.result || p.result.yesPercentage === 0) &&
+           bpData.urls.has(p.number)
+    );
+    if (missingVotes.length > 0) {
+      const urlsByNumber = new Map(missingVotes.map(p => [p.number, bpData.urls.get(p.number)!]));
+      const detailsMap = await ballotpediaClient.fetchVoteDataBatch(urlsByNumber);
+      for (const prop of missingVotes) {
+        const vd = detailsMap.get(prop.number);
+        if (!vd) continue;
+        if (vd.yesPercentage > 0) {
+          prop.result = {
+            passed: vd.yesPercentage > 50,
+            yesPercentage: vd.yesPercentage,
+            noPercentage: vd.noPercentage,
+            yesVotes: vd.yesVotes,
+            noVotes: vd.noVotes,
+            totalVotes: vd.yesVotes + vd.noVotes,
+            turnout: 0,
+          };
+          prop.status = prop.result.passed ? 'passed' : 'failed';
+        }
+        // Use the individual-page description when the current summary is thin or just a title
+        const summaryIsTitle = !prop.summary || prop.summary.trim() === prop.title.trim();
+        if (vd.summary && summaryIsTitle) {
+          prop.summary = vd.summary;
+        }
+      }
+      console.log(`[CA-SOS] Enriched ${detailsMap.size} props via individual Ballotpedia pages`);
     }
 
     return allPropositions.sort((a, b) => parseInt(a.number) - parseInt(b.number));
@@ -679,17 +715,56 @@ class CASosClient {
     const prop = propositions.find(p => p.number === number);
     if (!prop) return null;
 
-    // Enrich with detail page data from Quick Guide
+    // Enrich with detail page data from Quick Guide (SPA pages often return nothing)
     const detail = await this.fetchPropositionDetail(prop.electionDate, number);
     if (detail) {
       if (detail.summary && detail.summary.length > prop.summary.length) {
         prop.summary = detail.summary;
       }
-      if (detail.supporters?.length) {
-        prop.sponsors = detail.supporters;
+      if (detail.supporters?.length) prop.sponsors = detail.supporters;
+      if (detail.opponents?.length) prop.opponents = detail.opponents;
+    }
+
+    // If the summary is still thin (just the title or shorter), fetch the Ballotpedia
+    // individual page. fetchYearResults is cached so at most one extra HTTP request.
+    const summaryIsThin =
+      !prop.summary ||
+      prop.summary.trim().length < 60 ||
+      prop.summary.trim() === prop.title.trim();
+
+    const bpData = await ballotpediaClient.fetchYearResults(year).catch(() => null);
+    const bpUrl = bpData?.urls.get(number);
+
+    if (summaryIsThin) {
+      // 1. Year-table description is already scraped and often has the real ballot text
+      const tableDesc = bpData?.descriptions.get(number);
+      if (tableDesc && tableDesc.trim().length >= 20) {
+        prop.summary = tableDesc.trim();
       }
-      if (detail.opponents?.length) {
-        prop.opponents = detail.opponents;
+    }
+
+    // Always fetch the individual Ballotpedia page when we have the URL:
+    // - It may have a better description than the year-table
+    // - It has vote percentages for older elections that the year-table omits
+    if (bpUrl) {
+      const bpDetails = await ballotpediaClient.fetchPropositionSummary(bpUrl);
+
+      if (bpDetails.summary && bpDetails.summary.length > prop.summary.length) {
+        prop.summary = bpDetails.summary;
+      }
+
+      // Apply vote data when the current result lacks percentages (yesPercentage === 0)
+      if (bpDetails.yesPercentage && (!prop.result || prop.result.yesPercentage === 0)) {
+        prop.result = {
+          passed: bpDetails.yesPercentage > 50,
+          yesPercentage: bpDetails.yesPercentage,
+          noPercentage: bpDetails.noPercentage ?? (100 - bpDetails.yesPercentage),
+          yesVotes: bpDetails.yesVotes ?? 0,
+          noVotes: bpDetails.noVotes ?? 0,
+          totalVotes: (bpDetails.yesVotes ?? 0) + (bpDetails.noVotes ?? 0),
+          turnout: 0,
+        };
+        prop.status = prop.result.passed ? 'passed' : 'failed';
       }
     }
 

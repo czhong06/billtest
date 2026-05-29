@@ -12,6 +12,7 @@ import {
   PropositionCategory,
 } from '@/types';
 import { caSosClient, calAccessClient } from '@/lib/external-apis';
+import { ballotpediaClient } from '@/lib/external-apis/ballotpedia';
 
 class PropositionService {
   private cache: Map<string, { data: unknown; timestamp: number }> = new Map();
@@ -260,6 +261,25 @@ class PropositionService {
       this.setCache(cacheKey, finance);
       return finance;
     }
+
+    // Fall back to Ballotpedia campaign finance data (scraped from the year overview page)
+    try {
+      const bpData = await ballotpediaClient.fetchYearResults(year);
+      const fund = bpData.funding.get(measureNumber);
+      if (fund && fund.total > 0) {
+        const bpFinance: PropositionFinance = {
+          propositionId: `${year}-${measureNumber}`,
+          totalSupport: fund.support,
+          totalOpposition: fund.opposition,
+          supportCommittees: [],
+          oppositionCommittees: [],
+          topDonors: [],
+          lastUpdated: new Date().toISOString(),
+        };
+        this.setCache(cacheKey, bpFinance);
+        return bpFinance;
+      }
+    } catch { /* non-critical */ }
 
     return null;
   }
