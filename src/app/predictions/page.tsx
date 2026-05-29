@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import Papa from 'papaparse';
 import Link from 'next/link';
 import {
   Tabs, TabsList, TabsTrigger, TabsContent,
@@ -82,8 +83,71 @@ const PROP_CATEGORIES = [
 
 export default function PredictionsPage() {
   const [selectedYear, setSelectedYear] = useState<string | null>(null);
+   // NEW: CSV proposition data
+  // ------------------------------
+  const [csvData, setCsvData] = useState<any[]>([]);
 
+  // Dropdown selection
+  const [selectedMainCategory, setSelectedMainCategory] =
+    useState("Bond");
+
+  // Load CSV once when page loads
+  useEffect(() => {
+    fetch("/data/propositions_by_category.csv")
+      .then(res => res.text())
+      .then(csv => {
+        const parsed = Papa.parse(csv, {
+          header: true,
+          dynamicTyping: true,
+          skipEmptyLines: true,
+        });
+
+        setCsvData(parsed.data as any[]);
+      });
+  }, []);
   const highlightedYear = YEAR_DATA.find(d => d.year === selectedYear);
+  // ------------------------------
+// NEW: Proposition category data
+// ------------------------------
+
+// Main categories available in CSV
+const mainCategories = Array.from(
+  new Set(
+    csvData
+      .map(d => d.main_category)
+      .filter(Boolean)
+  )
+).sort();
+
+// Filter rows for selected category
+const filteredCategoryData = csvData.filter(
+  d => d.main_category === selectedMainCategory
+);
+
+// Pass/fail counts by subcategory
+const subcategoryPassFail = Object.values(
+  filteredCategoryData.reduce((acc, row) => {
+
+    const type = row.topic_type || "Other";
+
+    if (!acc[type]) {
+      acc[type] = {
+        topic_type: type,
+        Pass: 0,
+        Fail: 0,
+      };
+    }
+
+    if (Number(row.passed) === 1) {
+      acc[type].Pass += 1;
+    } else {
+      acc[type].Fail += 1;
+    }
+
+    return acc;
+
+  }, {} as Record<string, any>)
+);
 
   return (
     <div className="animate-fade-in" style={{ background: 'rgb(250 250 248)' }}>
@@ -111,6 +175,7 @@ export default function PredictionsPage() {
               {[
                 { value: 'by-year',     icon: BarChart3,  label: 'Pass/Fail by Year' },
                 { value: 'by-category', icon: BarChart3,  label: 'Pass/Fail by Category' },
+                { value: 'subcategory', icon: BarChart3, label: 'Subcategory Analysis' },
                 { value: 'finance',     icon: DollarSign, label: 'Campaign Finance' },
                 { value: 'similar',     icon: Link2,      label: 'Similar Props' },
                 { value: 'leaderboard', icon: Trophy,     label: 'Prop Stats Leaderboard' },
@@ -372,7 +437,113 @@ export default function PredictionsPage() {
                 </Card>
               </div>
             </TabsContent>
+            {/* ==SUBCATEGORY ANALYSIS== */}
+            <TabsContent value="subcategory">
+              <div className="space-y-6">
+                <div>
+                  <h2
+                  className="text-2xl font-black text-slate-900 mb-1"
+                  style={{
+                    fontFamily: "'Playfair Display', Georgia, serif"
+                  }}
+                  >
+                    Proposition Subcategory Analysis
+                  </h2>
 
+                  <p className="text-sm text-slate-500 font-serif">
+                    Explore proposition performance
+                    within each topic category.
+                  </p>
+                </div>
+
+                <Card className="border border-slate-200">
+
+                  <CardHeader className="border-b border-slate-200">
+
+                    <CardTitle
+                      className="text-lg font-bold text-slate-900"
+                      style={{
+                        fontFamily: "'Playfair Display', Georgia, serif"
+                      }}
+                    >
+                      Category Breakdown
+                    </CardTitle>
+                  </CardHeader>
+                <CardContent className="pt-6">
+                  {/* Category Dropdown */}
+                  <select
+                    value={selectedMainCategory}
+                    onChange={(e) =>
+                      setSelectedMainCategory(e.target.value)
+                    }
+                    className="
+                      border border-slate-300
+                      bg-white
+                      px-3 py-2
+                      mb-6
+                      font-serif
+                      text-sm
+                    "
+                  >
+                    {mainCategories.map(cat => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>))}
+        </select>
+
+        {/* Pass / Fail Chart */}
+
+        <ResponsiveContainer width="100%" height={350}>
+
+          <BarChart
+            data={subcategoryPassFail}
+            margin={{
+              top: 5,
+              right: 20,
+              left: 10,
+              bottom: 80
+            }}
+          >
+
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke="#e2e8f0"
+            />
+
+            <XAxis
+              dataKey="topic_type"
+              angle={-35}
+              textAnchor="end"
+              interval={0}
+            />
+
+            <YAxis />
+
+            <Tooltip />
+
+            <Legend />
+
+            <Bar
+              dataKey="Fail"
+              fill={FAIL_COLOR}
+            />
+
+            <Bar
+              dataKey="Pass"
+              fill={PASS_COLOR}
+            />
+
+          </BarChart>
+
+        </ResponsiveContainer>
+
+      </CardContent>
+
+    </Card>
+
+  </div>
+
+</TabsContent>
             {/* ── SIMILAR PROPS ── */}
             <TabsContent value="similar">
               <div className="space-y-5">
