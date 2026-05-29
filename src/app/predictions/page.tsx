@@ -149,6 +149,80 @@ const subcategoryPassFail = Object.values(
   }, {} as Record<string, any>)
 );
 
+// -------------------------------------
+// Subcategory Types Over Time
+// -------------------------------------
+
+const subcategoryOverTime = Object.values(
+  filteredCategoryData.reduce((acc, row) => {
+    const year = String(row.Year);
+    const type = row.topic_type || "Other";
+
+    if (!acc[year]) acc[year] = { year };
+
+    acc[year][type] = (acc[year][type] || 0) + 1;
+
+    return acc;
+  }, {} as Record<string, any>)
+);
+
+const topicTypes = Array.from(
+  new Set(
+    filteredCategoryData.map(
+      row => row.topic_type || "Other"
+    )
+  )
+);
+
+// -------------------------------------
+// Spending by Subcategory
+// -------------------------------------
+
+const spendingBySubtype = Object.values(
+  filteredCategoryData.reduce((acc, row) => {
+
+    const type = row.topic_type || "Other";
+
+    if (!acc[type]) {
+      acc[type] = {
+        topic_type: type,
+        supporting: 0,
+        opposing: 0,
+        count: 0
+      };
+    }
+
+    acc[type].supporting += Number(row.supporting_usd || 0);
+    acc[type].opposing += Number(row.opposing_usd || 0);
+    acc[type].count += 1;
+
+    return acc;
+
+  }, {} as Record<string, any>)
+).map((d: any) => ({
+  topic_type: d.topic_type,
+  supporting: d.supporting / d.count / 1_000_000,
+  opposing: d.opposing / d.count / 1_000_000
+}));
+
+// -------------------------------------
+// Top Spending Propositions
+// -------------------------------------
+
+const topSpendingProps = [...filteredCategoryData]
+  .filter(row => row.total_usd)
+  .sort((a, b) =>
+    Number(b.total_usd) - Number(a.total_usd)
+  )
+  .slice(0, 10)
+  .map(row => ({
+    label: `${row.Year} Prop ${row["Prop Number"]}`,
+    supporting:
+      Number(row.supporting_usd || 0) / 1_000_000,
+    opposing:
+      Number(row.opposing_usd || 0) / 1_000_000,
+  }));
+
   return (
     <div className="animate-fade-in" style={{ background: 'rgb(250 250 248)' }}>
 
@@ -499,9 +573,9 @@ const subcategoryPassFail = Object.values(
             data={subcategoryPassFail}
             margin={{
               top: 5,
-              right: 20,
+              right: 30,
               left: 10,
-              bottom: 80
+              bottom: 150
             }}
           >
 
@@ -521,7 +595,10 @@ const subcategoryPassFail = Object.values(
 
             <Tooltip />
 
-            <Legend />
+            <Legend
+  verticalAlign="top"
+  align="right"
+/>
 
             <Bar
               dataKey="Fail"
@@ -540,7 +617,95 @@ const subcategoryPassFail = Object.values(
       </CardContent>
 
     </Card>
+<Card className="border border-slate-200">
+  <CardHeader className="border-b border-slate-200">
+    <CardTitle className="text-lg font-bold text-slate-900 font-serif">
+      Subcategory Types Over Time
+    </CardTitle>
+  </CardHeader>
 
+  <CardContent className="pt-6">
+    <ResponsiveContainer width="100%" height={400}>
+      <BarChart data={subcategoryOverTime} margin={{ top: 20, right: 30, left: 10, bottom: 80 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+        <XAxis dataKey="year" angle={-45} textAnchor="end" />
+        <YAxis />
+        <Tooltip />
+        <Legend
+  verticalAlign="bottom"
+  wrapperStyle={{
+    paddingTop: "40px"
+  }}
+/>
+
+        {topicTypes.map((type, i) => (
+          <Bar
+            key={type}
+            dataKey={type}
+            stackId="a"
+            fill={`hsl(${(i * 45) % 360}, 60%, 45%)`}
+          />
+        ))}
+      </BarChart>
+    </ResponsiveContainer>
+  </CardContent>
+</Card>
+<Card className="border border-slate-200">
+  <CardHeader className="border-b border-slate-200">
+    <CardTitle className="text-lg font-bold text-slate-900 font-serif">
+      Average Campaign Spending by Subcategory
+    </CardTitle>
+  </CardHeader>
+
+  <CardContent className="pt-6">
+    <ResponsiveContainer width="100%" height={500}>
+      <BarChart
+  layout="vertical"
+  data={spendingBySubtype}
+>
+        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+        <YAxis
+  type="category"
+  dataKey="topic_type"
+  width={220}
+/>
+<XAxis
+  type="number"
+  tickFormatter={(value) => `$${value.toFixed(0)}M`}
+/>
+        <Tooltip
+  formatter={(value: number) =>
+    `$${value.toFixed(2)}M`
+  }
+/>
+        <Legend />
+        <Bar dataKey="supporting" fill={PASS_COLOR} name="Supporting Average" />
+        <Bar dataKey="opposing" fill={FAIL_COLOR} name="Opposing Average" />
+      </BarChart>
+    </ResponsiveContainer>
+  </CardContent>
+</Card>
+<Card className="border border-slate-200">
+  <CardHeader className="border-b border-slate-200">
+    <CardTitle className="text-lg font-bold text-slate-900 font-serif">
+      Top 10 Most Expensive Propositions
+    </CardTitle>
+  </CardHeader>
+
+  <CardContent className="pt-6">
+    <ResponsiveContainer width="100%" height={400}>
+      <BarChart data={topSpendingProps} margin={{ top: 20, right: 30, left: 10, bottom: 100 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+        <XAxis dataKey="label" angle={-45} textAnchor="end" height={140} />
+        <YAxis tickFormatter={(v) => `$${v}M`} />
+        <Tooltip formatter={(v) => `$${Number(v).toFixed(2)}M`} />
+        <Legend />
+        <Bar dataKey="supporting" stackId="a" fill={PASS_COLOR} name="Supporting" />
+        <Bar dataKey="opposing" stackId="a" fill={FAIL_COLOR} name="Opposing" />
+      </BarChart>
+    </ResponsiveContainer>
+  </CardContent>
+</Card>
   </div>
 
 </TabsContent>
